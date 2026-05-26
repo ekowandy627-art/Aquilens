@@ -8,6 +8,7 @@ import {
   type DemoTenant,
   type DemoUser,
 } from "@/lib/demo-auth";
+import { apiFetch } from "@/lib/api-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export type AuthContext = {
@@ -218,6 +219,9 @@ export function useAuthContext() {
 }
 
 export async function signOutEverywhere() {
+  await apiFetch("/auth/events/logout", { method: "POST", body: "{}" }).catch(
+    () => undefined,
+  );
   const supabase = createSupabaseBrowserClient();
   await supabase?.auth.signOut();
   clearSession();
