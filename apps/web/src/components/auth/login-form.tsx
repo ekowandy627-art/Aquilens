@@ -35,6 +35,17 @@ export function LoginForm() {
         setLoading(false);
         return;
       }
+
+      const demoResult = signInDemo(email, password);
+      if (demoResult.user) {
+        router.push("/dashboard");
+        router.refresh();
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+      return;
     }
 
     const demoResult = signInDemo(email, password);

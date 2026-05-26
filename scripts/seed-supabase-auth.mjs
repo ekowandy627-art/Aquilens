@@ -46,6 +46,50 @@ const tenants = [
   },
 ];
 
+const roleTemplates = [
+  {
+    key: "super-admin",
+    name: "Super Admin",
+    description: "Full access to everything in the tenant.",
+    permissions: ["*"],
+  },
+  {
+    key: "compliance-officer",
+    name: "Compliance Officer",
+    description: "Read-only tenant oversight and audit pack generation.",
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "agents:read",
+      "audit:read",
+      "audit_packs:generate",
+    ],
+  },
+  {
+    key: "department-head",
+    name: "Department Head",
+    description: "Function-scoped approval and workflow oversight.",
+    permissions: ["processes:read", "processes:approve", "workflows:read"],
+  },
+  {
+    key: "process-owner",
+    name: "Process Owner",
+    description: "Create, edit, and submit owned processes.",
+    permissions: [
+      "processes:create",
+      "processes:read",
+      "processes:edit",
+      "workflows:read",
+    ],
+  },
+  {
+    key: "staff",
+    name: "Staff",
+    description: "Complete assigned tasks and view own process work.",
+    permissions: ["processes:read", "workflows:complete"],
+  },
+];
+
 const demoUsers = [
   {
     email: "gis-admin@aquilens.test",
@@ -96,6 +140,20 @@ const demoUsers = [
     role: "Process Owner",
   },
 ];
+
+function roleIdFor(tenantId, roleKey) {
+  const suffix = tenantId.endsWith("1") ? "1" : "2";
+  const roleIndex = roleTemplates.findIndex((role) => role.key === roleKey) + 1;
+  return `10000000-0000-4000-800${suffix}-00000000000${roleIndex}`;
+}
+
+function roleKeyForName(roleName) {
+  const template = roleTemplates.find((role) => role.name === roleName);
+  if (!template) {
+    throw new Error(`Unknown role: ${roleName}`);
+  }
+  return template.key;
+}
 
 async function upsertTenant(tenant) {
   const { error } = await supabase.from("tenants").upsert(tenant, {
@@ -173,14 +231,53 @@ async function upsertPublicUser(authUserId, user) {
   }
 }
 
+async function upsertRolesForTenant(tenantId) {
+  for (const role of roleTemplates) {
+    const { error } = await supabase.from("roles").upsert(
+      {
+        id: roleIdFor(tenantId, role.key),
+        tenant_id: tenantId,
+        name: role.name,
+        description: role.description,
+        is_system: true,
+        system_key: role.key,
+      },
+      { onConflict: "id" },
+    );
+
+    if (error) {
+      throw new Error(`Role ${role.name}: ${error.message}`);
+    }
+  }
+}
+
+async function assignRole(authUserId, user) {
+  const roleId = roleIdFor(user.tenant_id, roleKeyForName(user.role));
+  const { error } = await supabase.from("user_roles").upsert(
+    {
+      user_id: authUserId,
+      role_id: roleId,
+      tenant_id: user.tenant_id,
+      assigned_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,role_id,tenant_id" },
+  );
+
+  if (error) {
+    throw new Error(`Assign ${user.role} to ${user.email}: ${error.message}`);
+  }
+}
+
 async function main() {
   for (const tenant of tenants) {
     await upsertTenant(tenant);
+    await upsertRolesForTenant(tenant.id);
   }
 
   for (const user of demoUsers) {
     const authUserId = await getOrCreateAuthUser(user);
     await upsertPublicUser(authUserId, user);
+    await assignRole(authUserId, user);
     console.log(`Seeded ${user.email}`);
   }
 

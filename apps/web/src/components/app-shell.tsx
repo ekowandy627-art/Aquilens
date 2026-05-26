@@ -3,15 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Bell, ChevronLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import clsx from "clsx";
 import { navItems, settingsNavItem, titleFromPathname } from "@/lib/navigation";
-import {
-  clearSession,
-  getSessionContext,
-  switchTenant,
-  type DemoSession,
-} from "@/lib/demo-auth";
+import { getSessionContext, switchTenant } from "@/lib/demo-auth";
+import { signOutEverywhere, useAuthContext } from "@/lib/use-auth-context";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -19,25 +15,9 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [session, setSession] = useState<DemoSession | null>(null);
   const pathname = usePathname();
   const title = titleFromPathname(pathname);
-  const context = getSessionContext(session);
-
-  useEffect(() => {
-    function syncSession() {
-      setSession(getSessionContext().session);
-    }
-
-    syncSession();
-    window.addEventListener("storage", syncSession);
-    window.addEventListener("aquilens-session-changed", syncSession);
-
-    return () => {
-      window.removeEventListener("storage", syncSession);
-      window.removeEventListener("aquilens-session-changed", syncSession);
-    };
-  }, []);
+  const context = useAuthContext();
 
   return (
     <div className="flex min-h-screen bg-surface-bg text-foreground">
@@ -164,13 +144,15 @@ export function AppShell({ children }: AppShellProps) {
                 <UserRound className="size-3.5" aria-hidden="true" />
               </span>
               <span className="hidden md:inline">
-                {context.user?.fullName ?? "Not signed in"}
+                {context.loading
+                  ? "Loading..."
+                  : (context.user?.fullName ?? "Not signed in")}
               </span>
             </button>
             {context.user ? (
               <button
                 type="button"
-                onClick={clearSession}
+                onClick={() => void signOutEverywhere()}
                 className="grid size-9 place-items-center rounded-md border border-border text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
                 aria-label="Sign out"
               >

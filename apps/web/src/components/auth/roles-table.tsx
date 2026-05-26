@@ -1,19 +1,71 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ShieldPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { getSessionContext, rolesForTenant } from "@/lib/demo-auth";
+import { rolesForTenant, type DemoRole } from "@/lib/demo-auth";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useAuthContext } from "@/lib/use-auth-context";
 
 export function RolesTable() {
-  const context = getSessionContext();
-  const roles = rolesForTenant(context.tenant?.id ?? "tenant-gis");
+  const context = useAuthContext();
+  const [liveRoles, setLiveRoles] = useState<DemoRole[] | null>(null);
+  const fallbackRoles = rolesForTenant(context.tenant?.id ?? "tenant-gis");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadRoles() {
+      if (context.source !== "supabase" || !context.tenant) {
+        setLiveRoles(null);
+        return;
+      }
+
+      const supabase = createSupabaseBrowserClient();
+
+      if (!supabase) {
+        return;
+      }
+
+      const { data } = await supabase
+        .from("roles")
+        .select("id, tenant_id, name, description, is_system")
+        .eq("tenant_id", context.tenant.id)
+        .order("name");
+
+      if (mounted) {
+        setLiveRoles(
+          (data ?? []).map((role) => ({
+            id: role.id,
+            tenantId: role.tenant_id,
+            name: role.name,
+            description: role.description ?? "",
+            isSystem: role.is_system,
+            permissions: [],
+          })),
+        );
+      }
+    }
+
+    void loadRoles();
+
+    return () => {
+      mounted = false;
+    };
+  }, [context.source, context.tenant]);
+
+  const roles = liveRoles ?? fallbackRoles;
 
   return (
     <>
       <PageHeader
         title="Roles"
-        description="System roles and permission scopes that drive Phase 1 route and API access decisions."
+        description={
+          context.source === "supabase"
+            ? "Live Supabase system roles for the current tenant."
+            : "System roles and permission scopes that drive Phase 1 access decisions."
+        }
         action={
           <Button type="button">
             <ShieldPlus className="size-4" aria-hidden="true" />

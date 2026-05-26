@@ -2,16 +2,16 @@
 
 import { ShieldCheck, UserRound } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { getSessionContext } from "@/lib/demo-auth";
+import { useAuthContext } from "@/lib/use-auth-context";
 
 export function ProfilePanel() {
-  const context = getSessionContext();
+  const context = useAuthContext();
 
   return (
     <>
       <PageHeader
         title="My Profile"
-        description="Current demo identity, tenant membership, roles, and MFA state."
+        description="Current identity, tenant membership, roles, and MFA state."
       />
 
       <section className="rounded-md border border-border bg-white p-6">
@@ -24,7 +24,9 @@ export function ProfilePanel() {
               {context.user?.fullName ?? "Not signed in"}
             </h2>
             <p className="mt-1 text-sm text-text-muted">
-              {context.user?.email ?? "Sign in to view profile details."}
+              {context.loading
+                ? "Loading profile..."
+                : (context.user?.email ?? "Sign in to view profile details.")}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               {context.roles.map((role) => (
@@ -55,6 +57,14 @@ export function ProfilePanel() {
             </p>
             <p className="mt-1 text-sm font-medium capitalize text-slate-950">
               {context.user?.status ?? "unknown"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase text-text-muted">
+              Source
+            </p>
+            <p className="mt-1 text-sm font-medium capitalize text-slate-950">
+              {context.source}
             </p>
           </div>
           <div>
