@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { ShieldPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -67,9 +68,11 @@ export function RolesTable() {
             : "System roles and permission scopes that drive Phase 1 access decisions."
         }
         action={
-          <Button type="button">
-            <ShieldPlus className="size-4" aria-hidden="true" />
-            Create custom role
+          <Button asChild>
+            <Link href="/settings/roles/new">
+              <ShieldPlus className="size-4" aria-hidden="true" />
+              Create custom role
+            </Link>
           </Button>
         }
       />

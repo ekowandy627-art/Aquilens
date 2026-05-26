@@ -51,7 +51,16 @@ const roleTemplates = [
     key: "super-admin",
     name: "Super Admin",
     description: "Full access to everything in the tenant.",
-    permissions: ["*"],
+    permissions: [
+      "users:read",
+      "users:invite",
+      "users:edit",
+      "users:assign_roles",
+      "roles:manage",
+      "settings:edit",
+      "access_reviews:read",
+      "access_reviews:manage",
+    ],
   },
   {
     key: "compliance-officer",
@@ -63,6 +72,9 @@ const roleTemplates = [
       "agents:read",
       "audit:read",
       "audit_packs:generate",
+      "users:read",
+      "access_reviews:read",
+      "access_reviews:manage",
     ],
   },
   {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Building2, Database, GitBranch, Shield, Users } from "lucide-react";
+import { Building2, ClipboardCheck, Database, GitBranch, Shield, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 
 const tabs = [
@@ -32,6 +32,12 @@ const tabs = [
     description: "Notification chains and missed work rules.",
     href: "/settings/escalation",
     icon: Shield,
+  },
+  {
+    label: "Access Reviews",
+    description: "Review and confirm user role assignments.",
+    href: "/settings/access-reviews",
+    icon: ClipboardCheck,
   },
   {
     label: "Your Data",

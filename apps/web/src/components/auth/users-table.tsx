@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { MailPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -111,9 +112,11 @@ export function UsersTable() {
             : "Tenant-scoped demo user list with role assignments and status."
         }
         action={
-          <Button type="button">
-            <MailPlus className="size-4" aria-hidden="true" />
-            Invite user
+          <Button asChild>
+            <Link href="/settings/users/invite">
+              <MailPlus className="size-4" aria-hidden="true" />
+              Invite user
+            </Link>
           </Button>
         }
       />
