@@ -17,6 +17,7 @@
     "lint:web": "npm --prefix apps/web run lint",
     "lint:api": "npm --prefix apps/api run lint",
     "test": "npm run test:api",
-    "test:api": "npm --prefix apps/api run test"
+    "test:api": "npm --prefix apps/api run test",
+    "seed:supabase-auth": "node scripts/seed-supabase-auth.mjs"
   }
 }
