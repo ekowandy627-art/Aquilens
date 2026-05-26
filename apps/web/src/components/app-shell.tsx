@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronLeft, ChevronRight, UserRound } from "lucide-react";
-import { useState } from "react";
+import { Bell, ChevronLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
+import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { navItems, settingsNavItem, titleFromPathname } from "@/lib/navigation";
+import {
+  clearSession,
+  getSessionContext,
+  switchTenant,
+  type DemoSession,
+} from "@/lib/demo-auth";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -13,8 +19,25 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [session, setSession] = useState<DemoSession | null>(null);
   const pathname = usePathname();
   const title = titleFromPathname(pathname);
+  const context = getSessionContext(session);
+
+  useEffect(() => {
+    function syncSession() {
+      setSession(getSessionContext().session);
+    }
+
+    syncSession();
+    window.addEventListener("storage", syncSession);
+    window.addEventListener("aquilens-session-changed", syncSession);
+
+    return () => {
+      window.removeEventListener("storage", syncSession);
+      window.removeEventListener("aquilens-session-changed", syncSession);
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen bg-surface-bg text-foreground">
@@ -31,10 +54,10 @@ export function AppShell({ children }: AppShellProps) {
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-brand-navy">
-                Aquilens
+                {context.tenant?.name ?? "Aquilens"}
               </p>
               <p className="truncate text-xs text-text-muted">
-                Governance backbone
+                {context.tenant ? context.tenant.country : "Governance backbone"}
               </p>
             </div>
           )}
@@ -104,6 +127,27 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {context.memberships.length > 1 && (
+              <select
+                value={context.tenant?.id}
+                onChange={(event) => switchTenant(event.target.value)}
+                className="hidden h-9 rounded-md border border-border bg-white px-2 text-sm text-slate-700 md:block"
+                aria-label="Switch tenant"
+              >
+                {context.memberships.map((membership) => {
+                  const tenant = getSessionContext({
+                    userId: membership.id,
+                    tenantId: membership.tenantId,
+                  }).tenant;
+
+                  return (
+                    <option key={membership.tenantId} value={membership.tenantId}>
+                      {tenant?.name}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
             <button
               type="button"
               className="grid size-9 place-items-center rounded-md border border-border text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
@@ -119,8 +163,20 @@ export function AppShell({ children }: AppShellProps) {
               <span className="grid size-6 place-items-center rounded-full bg-slate-100">
                 <UserRound className="size-3.5" aria-hidden="true" />
               </span>
-              <span className="hidden md:inline">Victor Hazel</span>
+              <span className="hidden md:inline">
+                {context.user?.fullName ?? "Not signed in"}
+              </span>
             </button>
+            {context.user ? (
+              <button
+                type="button"
+                onClick={clearSession}
+                className="grid size-9 place-items-center rounded-md border border-border text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
+                aria-label="Sign out"
+              >
+                <LogOut className="size-4" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
         </header>
 

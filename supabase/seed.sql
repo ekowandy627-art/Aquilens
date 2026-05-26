@@ -1,0 +1,17 @@
+-- Demo tenant/user seed notes
+--
+-- Supabase Auth users should be created through the Auth dashboard, Supabase CLI,
+-- or an admin script because public.users.id references auth.users(id).
+--
+-- Demo accounts expected by the app:
+-- gis-admin@aquilens.test       Aquilens2024!
+-- gis-compliance@aquilens.test  Aquilens2024!
+-- gis-head@aquilens.test        Aquilens2024!
+-- gis-owner@aquilens.test       Aquilens2024!
+-- gis-staff@aquilens.test       Aquilens2024!
+-- hospital-admin@aquilens.test  Aquilens2024!
+-- hospital-staff@aquilens.test  Aquilens2024!
+-- dual@aquilens.test            Aquilens2024!
+--
+-- Until those users exist in Auth, the web app falls back to local demo auth
+-- when Supabase env vars are not configured.
