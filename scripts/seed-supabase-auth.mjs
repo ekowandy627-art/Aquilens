@@ -155,6 +155,15 @@ function roleKeyForName(roleName) {
   return template.key;
 }
 
+function splitPermission(permission) {
+  if (permission === "*") {
+    return null;
+  }
+
+  const [resource, action] = permission.split(":");
+  return { resource, action };
+}
+
 async function upsertTenant(tenant) {
   const { error } = await supabase.from("tenants").upsert(tenant, {
     onConflict: "id",
@@ -247,6 +256,42 @@ async function upsertRolesForTenant(tenantId) {
 
     if (error) {
       throw new Error(`Role ${role.name}: ${error.message}`);
+    }
+
+    for (const permission of role.permissions) {
+      const parsed = splitPermission(permission);
+
+      if (!parsed) {
+        continue;
+      }
+
+      const { data: permissionRow, error: permissionError } = await supabase
+        .from("permissions")
+        .select("id")
+        .eq("resource", parsed.resource)
+        .eq("action", parsed.action)
+        .single();
+
+      if (permissionError) {
+        throw new Error(`Permission ${permission}: ${permissionError.message}`);
+      }
+
+      const { error: rolePermissionError } = await supabase
+        .from("role_permissions")
+        .upsert(
+          {
+            role_id: roleIdFor(tenantId, role.key),
+            permission_id: permissionRow.id,
+            scope: "global",
+          },
+          { onConflict: "role_id,permission_id,scope" },
+        );
+
+      if (rolePermissionError) {
+        throw new Error(
+          `Role permission ${role.name}/${permission}: ${rolePermissionError.message}`,
+        );
+      }
     }
   }
 }

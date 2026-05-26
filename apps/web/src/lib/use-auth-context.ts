@@ -48,6 +48,14 @@ type DbUserRole = {
   role_id: string;
 };
 
+type DbRolePermission = {
+  role_id: string;
+  permissions: {
+    resource: string;
+    action: string;
+  } | null;
+};
+
 const emptyContext: AuthContext = {
   loading: true,
   source: "none",
@@ -108,7 +116,12 @@ export function useAuthContext() {
             .maybeSingle<DbUser>();
 
           if (profile) {
-            const [{ data: tenant }, { data: roles }, { data: userRoles }] =
+            const [
+              { data: tenant },
+              { data: roles },
+              { data: userRoles },
+              { data: rolePermissions },
+            ] =
               await Promise.all([
                 supabase
                   .from("tenants")
@@ -125,12 +138,34 @@ export function useAuthContext() {
                   .select("role_id")
                   .eq("user_id", profile.id)
                   .returns<DbUserRole[]>(),
+                supabase
+                  .from("role_permissions")
+                  .select("role_id, permissions(resource, action)")
+                  .returns<DbRolePermission[]>(),
               ]);
 
             const assignedRoleIds = new Set(
               (userRoles ?? []).map((role) => role.role_id),
             );
-            const mappedRoles = (roles ?? []).map(dbRoleToDemo);
+            const mappedRoles = (roles ?? []).map((role) => {
+              const mapped = dbRoleToDemo(role);
+              return {
+                ...mapped,
+                permissions:
+                  role.name === "Super Admin"
+                    ? ["*"]
+                    : (rolePermissions ?? [])
+                        .filter(
+                          (rolePermission) =>
+                            rolePermission.role_id === role.id &&
+                            rolePermission.permissions,
+                        )
+                        .map(
+                          (rolePermission) =>
+                            `${rolePermission.permissions!.resource}:${rolePermission.permissions!.action}`,
+                        ),
+              };
+            });
             const mappedUser = {
               ...dbUserToDemo(profile),
               roles: [...assignedRoleIds],
