@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, ChevronLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
 import { useState } from "react";
 import clsx from "clsx";
@@ -16,8 +16,15 @@ type AppShellProps = {
 export function AppShell({ children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const title = titleFromPathname(pathname);
   const context = useAuthContext();
+
+  async function signOut() {
+    await signOutEverywhere();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <div className="flex min-h-screen bg-surface-bg text-foreground">
@@ -152,7 +159,7 @@ export function AppShell({ children }: AppShellProps) {
             {context.user ? (
               <button
                 type="button"
-                onClick={() => void signOutEverywhere()}
+                onClick={() => void signOut()}
                 className="grid size-9 place-items-center rounded-md border border-border text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
                 aria-label="Sign out"
               >
