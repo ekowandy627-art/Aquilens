@@ -1,11 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Save, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { createId, type FunctionNode } from "@/lib/scaffolds";
-import { loadTenantProfile, saveTenantProfile } from "@/lib/tenant-storage";
+import {
+  loadTenantProfile,
+  loadTenantProfileFromApi,
+  saveTenantProfile,
+  saveTenantProfileToApi,
+} from "@/lib/tenant-storage";
 
 export function StructureEditor() {
   const [state, setState] = useState(() => {
@@ -15,8 +20,33 @@ export function StructureEditor() {
       selectedFunctionId: loaded.functions[0]?.id ?? null,
     };
   });
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const { profile, selectedFunctionId } = state;
+
+  useEffect(() => {
+    let active = true;
+
+    loadTenantProfileFromApi()
+      .then((loaded) => {
+        if (active) {
+          setState({
+            profile: loaded,
+            selectedFunctionId: loaded.functions[0]?.id ?? null,
+          });
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const selectedFunction = useMemo(
     () => profile.functions.find((fn) => fn.id === selectedFunctionId),
@@ -37,6 +67,7 @@ export function StructureEditor() {
       selectedFunctionId: nextSelectedFunctionId,
     });
     saveTenantProfile(nextProfile);
+    setSaved(false);
   }
 
   function addFunction() {
@@ -56,6 +87,22 @@ export function StructureEditor() {
       selectedFunctionId: nextFunction.id,
     });
     saveTenantProfile(nextProfile);
+    setSaved(false);
+  }
+
+  async function saveStructure() {
+    setLoading(true);
+    const savedProfile = await saveTenantProfileToApi(profile);
+    setState((current) => ({
+      profile: savedProfile,
+      selectedFunctionId: savedProfile.functions.some(
+        (fn) => fn.id === current.selectedFunctionId,
+      )
+        ? current.selectedFunctionId
+        : (savedProfile.functions[0]?.id ?? null),
+    }));
+    setSaved(true);
+    setLoading(false);
   }
 
   return (
@@ -64,12 +111,24 @@ export function StructureEditor() {
         title="Function Tree"
         description="Edit the tenant scaffold that organises functions, process areas, and future SOPs."
         action={
-          <Button type="button" onClick={addFunction}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add function
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" onClick={() => void saveStructure()} disabled={loading}>
+              <Save className="size-4" aria-hidden="true" />
+              {loading ? "Saving..." : "Save scaffold"}
+            </Button>
+            <Button type="button" onClick={addFunction}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add function
+            </Button>
+          </div>
         }
       />
+
+      <p className="mb-4 text-sm text-text-muted">
+        {saved
+          ? "Scaffold saved to Supabase and the audit log."
+          : "Edits are staged locally until you save the scaffold."}
+      </p>
 
       <div className="grid min-h-[560px] gap-5 lg:grid-cols-[300px_1fr]">
         <aside className="rounded-md border border-border bg-white p-3">

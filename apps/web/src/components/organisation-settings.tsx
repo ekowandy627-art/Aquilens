@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Save } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -9,22 +9,50 @@ import {
   type InstitutionType,
   type TenantProfile,
 } from "@/lib/scaffolds";
-import { loadTenantProfile, saveTenantProfile } from "@/lib/tenant-storage";
+import {
+  loadTenantProfile,
+  loadTenantProfileFromApi,
+  saveTenantProfileToApi,
+} from "@/lib/tenant-storage";
 
 export function OrganisationSettings() {
   const [profile, setProfile] = useState<TenantProfile>(() =>
     loadTenantProfile(),
   );
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    loadTenantProfileFromApi()
+      .then((loaded) => {
+        if (active) {
+          setProfile(loaded);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function update(nextProfile: TenantProfile) {
     setProfile(nextProfile);
     setSaved(false);
   }
 
-  function save() {
-    saveTenantProfile(profile);
+  async function save() {
+    setLoading(true);
+    const savedProfile = await saveTenantProfileToApi(profile);
+    setProfile(savedProfile);
     setSaved(true);
+    setLoading(false);
   }
 
   return (
@@ -33,9 +61,9 @@ export function OrganisationSettings() {
         title="Organisation"
         description="Institution profile and tenant setup details used across the app shell."
         action={
-          <Button type="button" onClick={save}>
+          <Button type="button" onClick={() => void save()} disabled={loading}>
             <Save className="size-4" aria-hidden="true" />
-            Save changes
+            {loading ? "Saving..." : "Save changes"}
           </Button>
         }
       />
@@ -91,8 +119,8 @@ export function OrganisationSettings() {
 
         <p className="mt-5 text-sm text-text-muted">
           {saved
-            ? "Changes saved locally for this Phase 2 build."
-            : "Changes are saved locally until the Supabase tenant API is wired."}
+            ? "Changes saved to the tenant profile."
+            : "Changes will update the live tenant profile and audit log."}
         </p>
       </section>
     </>

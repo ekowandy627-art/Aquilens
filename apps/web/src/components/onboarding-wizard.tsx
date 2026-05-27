@@ -11,7 +11,11 @@ import {
   type FunctionNode,
   type InstitutionType,
 } from "@/lib/scaffolds";
-import { createTenantProfile, saveTenantProfile } from "@/lib/tenant-storage";
+import {
+  createTenantProfile,
+  saveTenantProfile,
+  saveTenantProfileToApi,
+} from "@/lib/tenant-storage";
 
 const steps = ["Institution", "Review", "Edit", "Confirm", "Done"];
 
@@ -25,6 +29,8 @@ export function OnboardingWizard() {
   const [functions, setFunctions] = useState<FunctionNode[]>(
     createScaffold("school"),
   );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const totalAreas = useMemo(
     () => functions.reduce((total, fn) => total + fn.areas.length, 0),
@@ -110,16 +116,26 @@ export function OnboardingWizard() {
     );
   }
 
-  function finish() {
-    saveTenantProfile(
-      createTenantProfile({
-        name,
-        country,
-        institutionType,
-        functions,
-      }),
-    );
-    setStep(4);
+  async function finish() {
+    setSaving(true);
+    setError(null);
+
+    const profile = createTenantProfile({
+      name,
+      country,
+      institutionType,
+      functions,
+    });
+
+    try {
+      saveTenantProfile(profile);
+      await saveTenantProfileToApi(profile);
+      setStep(4);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save scaffold");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -290,6 +306,8 @@ export function OnboardingWizard() {
           </div>
         )}
 
+        {error && <p className="mt-5 text-sm text-red-600">{error}</p>}
+
         {step < 4 && (
           <div className="mt-8 flex justify-between border-t border-border pt-5">
             <Button
@@ -301,8 +319,8 @@ export function OnboardingWizard() {
               Back
             </Button>
             {step === 3 ? (
-              <Button type="button" onClick={finish}>
-                Confirm scaffold
+              <Button type="button" onClick={() => void finish()} disabled={saving}>
+                {saving ? "Saving..." : "Confirm scaffold"}
               </Button>
             ) : (
               <Button

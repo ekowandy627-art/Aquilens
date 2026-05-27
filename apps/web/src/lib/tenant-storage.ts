@@ -6,6 +6,7 @@ import {
   type InstitutionType,
   type TenantProfile,
 } from "@/lib/scaffolds";
+import { apiFetch } from "@/lib/api-client";
 
 const STORAGE_KEY = "aquilens.tenant-profile.v1";
 
@@ -42,4 +43,29 @@ export function createTenantProfile(input: {
     ...input,
     onboardingComplete: true,
   };
+}
+
+export async function loadTenantProfileFromApi() {
+  try {
+    const profile = await apiFetch<TenantProfile>("/tenants/profile");
+    saveTenantProfile(profile);
+    return profile;
+  } catch {
+    return loadTenantProfile();
+  }
+}
+
+export async function saveTenantProfileToApi(profile: TenantProfile) {
+  saveTenantProfile(profile);
+
+  try {
+    const saved = await apiFetch<TenantProfile>("/tenants/profile", {
+      method: "PUT",
+      body: JSON.stringify(profile),
+    });
+    saveTenantProfile(saved);
+    return saved;
+  } catch {
+    return profile;
+  }
 }

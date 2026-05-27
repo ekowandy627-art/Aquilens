@@ -46,6 +46,25 @@ const tenants = [
   },
 ];
 
+const tenantScaffolds = {
+  school: [
+    ["Academics", ["Student Records", "Curriculum", "Assessment", "Timetabling"]],
+    ["Admissions", ["Enquiries", "Enrolment", "Scholarships"]],
+    ["Finance", ["Fees & Billing", "Payroll", "Procurement"]],
+    ["HR", ["Recruitment", "Staff Records", "Performance"]],
+    ["Operations", ["Facilities", "Health & Safety", "Transport"]],
+    ["IT", ["Systems", "Data Management", "Helpdesk"]],
+  ],
+  hospital: [
+    ["Clinical", ["Patient Admissions", "Wards", "Theatre", "Emergency"]],
+    ["Pharmacy", ["Dispensing", "Procurement", "Controlled Drugs"]],
+    ["Nursing", ["Ward Staffing", "Patient Handover", "Care Plans"]],
+    ["Admissions", ["Registration", "Insurance Checks", "Discharge"]],
+    ["Finance", ["Billing", "Payroll", "Procurement"]],
+    ["IT", ["Systems", "Data", "Security"]],
+  ],
+};
+
 const roleTemplates = [
   {
     key: "super-admin",
@@ -58,6 +77,8 @@ const roleTemplates = [
       "users:assign_roles",
       "roles:manage",
       "settings:edit",
+      "tenant_scaffold:read",
+      "tenant_scaffold:manage",
       "access_reviews:read",
       "access_reviews:manage",
     ],
@@ -73,6 +94,7 @@ const roleTemplates = [
       "audit:read",
       "audit_packs:generate",
       "users:read",
+      "tenant_scaffold:read",
       "access_reviews:read",
       "access_reviews:manage",
     ],
@@ -308,6 +330,51 @@ async function upsertRolesForTenant(tenantId) {
   }
 }
 
+async function upsertScaffoldForTenant(tenant) {
+  const scaffold = tenantScaffolds[tenant.institution_type] ?? tenantScaffolds.school;
+
+  for (const [functionIndex, [functionName, areas]] of scaffold.entries()) {
+    const functionId = deterministicId(tenant.id, `function-${functionIndex + 1}`);
+    const { error: functionError } = await supabase.from("tenant_functions").upsert(
+      {
+        id: functionId,
+        tenant_id: tenant.id,
+        name: functionName,
+        sort_order: functionIndex,
+        status: "active",
+      },
+      { onConflict: "id" },
+    );
+
+    if (functionError) {
+      throw new Error(`Function ${functionName}: ${functionError.message}`);
+    }
+
+    for (const [areaIndex, areaName] of areas.entries()) {
+      const { error: areaError } = await supabase
+        .from("tenant_process_areas")
+        .upsert(
+          {
+            id: deterministicId(
+              tenant.id,
+              `function-${functionIndex + 1}-area-${areaIndex + 1}`,
+            ),
+            tenant_id: tenant.id,
+            function_id: functionId,
+            name: areaName,
+            sort_order: areaIndex,
+            status: "active",
+          },
+          { onConflict: "id" },
+        );
+
+      if (areaError) {
+        throw new Error(`Process area ${areaName}: ${areaError.message}`);
+      }
+    }
+  }
+}
+
 async function assignRole(authUserId, user) {
   const roleId = roleIdFor(user.tenant_id, roleKeyForName(user.role));
   const { error } = await supabase.from("user_roles").upsert(
@@ -329,6 +396,7 @@ async function main() {
   for (const tenant of tenants) {
     await upsertTenant(tenant);
     await upsertRolesForTenant(tenant.id);
+    await upsertScaffoldForTenant(tenant);
   }
 
   for (const user of demoUsers) {
@@ -339,6 +407,12 @@ async function main() {
   }
 
   console.log(`Done. Demo password: ${password}`);
+}
+
+function deterministicId(tenantId, key) {
+  const suffix = tenantId.endsWith("1") ? "1" : "2";
+  const number = Number(key.replace(/\D/g, "").slice(0, 5)).toString().padStart(12, "0");
+  return `20000000-0000-4000-800${suffix}-${number}`;
 }
 
 main().catch((error) => {
