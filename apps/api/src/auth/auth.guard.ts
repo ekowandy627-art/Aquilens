@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import type { AuthUser } from "./auth.types";
+import { resolveDemoUser } from "./demo-users";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
 
 type UserProfile = {
@@ -56,14 +57,7 @@ export class AuthGuard implements CanActivate {
     const supabase = getSupabaseAdminClient();
 
     if (!supabase) {
-      request.user = {
-        id: "user-gis-admin",
-        tenantId: "tenant-gis",
-        email: "gis-admin@aquilens.test",
-        roles: ["Super Admin"],
-        permissions: ["*"],
-      };
-
+      request.user = resolveDemoUser(token);
       return true;
     }
 

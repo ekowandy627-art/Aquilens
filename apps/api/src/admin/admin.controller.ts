@@ -15,6 +15,7 @@ import { PermissionGuard } from "../auth/permission.guard";
 import { RequirePermission } from "../auth/require-permission.decorator";
 import type { AuthUser } from "../auth/auth.types";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
+import { listDemoUsers } from "../auth/demo-users";
 import { AuditService } from "../audit/audit.service";
 
 type InviteUserDto = {
@@ -46,7 +47,7 @@ export class AdminController {
     const supabase = getSupabaseAdminClient();
 
     if (!supabase) {
-      return { success: true, data: [] };
+      return { success: true, data: listDemoUsers(user.tenantId) };
     }
 
     const { data } = await supabase

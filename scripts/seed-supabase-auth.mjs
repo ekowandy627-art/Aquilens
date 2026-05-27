@@ -392,6 +392,204 @@ async function assignRole(authUserId, user) {
   }
 }
 
+function processCode(functionName, areaName, sequence) {
+  const func = functionName.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 4).padEnd(4, "X");
+  const areaWord = areaName.trim().split(/\s+/)[0] ?? areaName;
+  const area = areaWord.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 4).padEnd(3, "X").slice(0, 4);
+  return `${func}-${area}-${String(sequence).padStart(3, "0")}`;
+}
+
+async function seedGisProcesses(tenantId, ownerUserId) {
+  const seeds = [
+    {
+      id: "30000000-0000-4000-8001-000000000001",
+      versionId: "30000000-0000-4000-8001-000000000101",
+      functionKey: "function-1",
+      areaKey: "function-1-area-1",
+      name: "Record Student Attendance",
+      status: "draft",
+      versionStatus: "draft",
+      riskRating: "medium",
+      sequence: 1,
+      reviewFrequency: "quarterly",
+      executionSchedule: { kind: "daily", timezone: "Africa/Accra" },
+      steps: [
+        "Teacher takes register",
+        "Discrepancies flagged to admin",
+        "Absence notified to parents",
+      ],
+      people: [{ role: "owner" }, { role: "viewer", email: "gis-staff@aquilens.test" }],
+    },
+    {
+      id: "30000000-0000-4000-8001-000000000002",
+      versionId: "30000000-0000-4000-8001-000000000102",
+      functionKey: "function-2",
+      areaKey: "function-2-area-2",
+      name: "Enrol New Student",
+      status: "active",
+      versionStatus: "active",
+      riskRating: "high",
+      sequence: 1,
+      reviewFrequency: "annually",
+      executionSchedule: { kind: "ad_hoc" },
+      steps: [
+        "Receive application",
+        "Conduct interview",
+        "Confirm placement",
+        "Collect documentation",
+        "Create student record in SIS",
+      ],
+    },
+    {
+      id: "30000000-0000-4000-8001-000000000003",
+      versionId: "30000000-0000-4000-8001-000000000103",
+      functionKey: "function-3",
+      areaKey: "function-3-area-1",
+      name: "Issue Fee Invoice",
+      status: "draft",
+      versionStatus: "draft",
+      riskRating: "low",
+      sequence: 1,
+      reviewFrequency: "annually",
+      executionSchedule: { kind: "monthly", dayOfMonth: 1, timezone: "Africa/Accra" },
+      steps: [
+        "Generate invoice from fee schedule",
+        "Review invoice totals",
+        "Send invoice to guardian",
+      ],
+    },
+  ];
+
+  const functionNames = {
+    "function-1": "Academics",
+    "function-2": "Admissions",
+    "function-3": "Finance",
+  };
+  const areaNames = {
+    "function-1-area-1": "Student Records",
+    "function-2-area-2": "Enrolment",
+    "function-3-area-1": "Fees & Billing",
+  };
+
+  for (const seed of seeds) {
+    const functionId = deterministicId(tenantId, seed.functionKey);
+    const processAreaId = deterministicId(tenantId, seed.areaKey);
+    const code = processCode(
+      functionNames[seed.functionKey],
+      areaNames[seed.areaKey],
+      seed.sequence,
+    );
+
+    const { error: processError } = await supabase.from("processes").upsert(
+      {
+        id: seed.id,
+        tenant_id: tenantId,
+        function_id: functionId,
+        process_area_id: processAreaId,
+        process_code: code,
+        name: seed.name,
+        purpose: seed.name,
+        risk_rating: seed.riskRating,
+        review_frequency: seed.reviewFrequency ?? "annually",
+        execution_schedule: seed.executionSchedule ?? { kind: "ad_hoc" },
+        status: seed.status,
+        created_by: ownerUserId,
+      },
+      { onConflict: "id" },
+    );
+
+    if (processError) {
+      throw new Error(`Process ${seed.name}: ${processError.message}`);
+    }
+
+    const { error: versionError } = await supabase.from("process_versions").upsert(
+      {
+        id: seed.versionId,
+        tenant_id: tenantId,
+        process_id: seed.id,
+        version_number: 1,
+        status: seed.versionStatus,
+        created_by: ownerUserId,
+      },
+      { onConflict: "id" },
+    );
+
+    if (versionError) {
+      throw new Error(`Process version ${seed.name}: ${versionError.message}`);
+    }
+
+    const { error: linkError } = await supabase
+      .from("processes")
+      .update({ current_version_id: seed.versionId })
+      .eq("id", seed.id);
+
+    if (linkError) {
+      throw new Error(`Process version link ${seed.name}: ${linkError.message}`);
+    }
+
+    await supabase
+      .from("process_steps")
+      .delete()
+      .eq("process_version_id", seed.versionId);
+
+    for (const [index, title] of seed.steps.entries()) {
+      const { error: stepError } = await supabase.from("process_steps").insert({
+        tenant_id: tenantId,
+        process_version_id: seed.versionId,
+        step_number: index + 1,
+        title,
+        step_type: title.toLowerCase().includes("interview") ? "approval" : "manual",
+        evidence_required: title.toLowerCase().includes("documentation"),
+      });
+
+      if (stepError) {
+        throw new Error(`Process step ${title}: ${stepError.message}`);
+      }
+    }
+
+    await supabase
+      .from("process_version_people")
+      .delete()
+      .eq("process_version_id", seed.versionId);
+
+    const peopleRows = [];
+
+    if (seed.people?.length) {
+      for (const person of seed.people) {
+        let userId = ownerUserId;
+        if (person.email) {
+          const { data: userRow } = await supabase
+            .from("users")
+            .select("id")
+            .eq("tenant_id", tenantId)
+            .eq("email", person.email)
+            .maybeSingle();
+          userId = userRow?.id ?? ownerUserId;
+        }
+        peopleRows.push({
+          process_version_id: seed.versionId,
+          user_id: userId,
+          role: person.role,
+        });
+      }
+    } else {
+      peopleRows.push({
+        process_version_id: seed.versionId,
+        user_id: ownerUserId,
+        role: "owner",
+      });
+    }
+
+    const { error: peopleError } = await supabase
+      .from("process_version_people")
+      .insert(peopleRows);
+
+    if (peopleError) {
+      throw new Error(`Process people ${seed.name}: ${peopleError.message}`);
+    }
+  }
+}
+
 async function main() {
   for (const tenant of tenants) {
     await upsertTenant(tenant);
@@ -399,11 +597,21 @@ async function main() {
     await upsertScaffoldForTenant(tenant);
   }
 
+  let gisOwnerId = null;
+
   for (const user of demoUsers) {
     const authUserId = await getOrCreateAuthUser(user);
     await upsertPublicUser(authUserId, user);
     await assignRole(authUserId, user);
+    if (user.email === "gis-owner@aquilens.test") {
+      gisOwnerId = authUserId;
+    }
     console.log(`Seeded ${user.email}`);
+  }
+
+  if (gisOwnerId) {
+    await seedGisProcesses(tenants[0].id, gisOwnerId);
+    console.log("Seeded GIS demo processes");
   }
 
   console.log(`Done. Demo password: ${password}`);

@@ -16,8 +16,9 @@ async function resolveAuthToken() {
     return data.session.access_token;
   }
 
-  if (loadSession()) {
-    return "demo";
+  const demoSession = loadSession();
+  if (demoSession) {
+    return `demo:${demoSession.userId}`;
   }
 
   return null;

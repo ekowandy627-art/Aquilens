@@ -31,6 +31,7 @@ Each phase section is a self-contained build prompt. Hand it to an AI code assis
 | 1 | Multi-Tenant Security Kernel | Login, tenant isolation, roles, access denied |
 | 2 | Tenant Onboarding + Scaffold | Setup wizard, function tree, process area editor |
 | 3 | Process Repository + SOP Editor | Process list, process detail, step builder, draft save |
+| 3.5 | Process Access + Execution Schedule | Per-process owner/editor/viewer, execution vs review cadence |
 | 4 | AI SOP Generation | Natural language → SOP, gap detection, review screen |
 | 5 | SOP Approval Lifecycle | Submit, approval queue, approve/reject, version history |
 | 6 | Workflow Execution | Start workflow, task board, sequential task completion |
@@ -828,13 +829,128 @@ Process 3 — FIN-FEES-001 "Issue Fee Invoice"
 
 ---
 
+## Phase 3.5 — Process Access + Execution Schedule
+
+**Goal:** Separate *how often the SOP document is reviewed* from *how often the process is performed*, and enforce per-process **Owner / Editor / Viewer** assignments so process owners can delegate edit and view access without tenant-admin powers.
+
+**Estimated effort:** 1 day
+
+**Prerequisites:** Phase 3 complete
+
+---
+
+### Concepts (keep these distinct in UI and schema)
+
+| Field | Meaning | Example |
+|---|---|---|
+| **`review_frequency`** | Governance — how often the **SOP document** must be reviewed for accuracy | Annually, quarterly, risk-based |
+| **`execution_schedule`** | Operations — how often the **process work** is performed | Daily, every Monday, 5 days before term start |
+
+Never combine these into one control. Labels in the UI:
+
+- **“How often should this SOP be reviewed?”** → `review_frequency`
+- **“How often is this process performed?”** → `execution_schedule`
+
+---
+
+### What to Build
+
+**Database changes:**
+```sql
+-- On processes
+execution_schedule jsonb NOT NULL DEFAULT '{"kind":"ad_hoc"}'
+
+-- process_version_people.role expands:
+-- owner | editor | viewer | approver
+-- (migrate legacy `user` → `viewer`)
+```
+
+**`execution_schedule` JSON schema:**
+```typescript
+type ExecutionSchedule =
+  | { kind: 'ad_hoc' }
+  | { kind: 'daily'; timezone?: string }
+  | { kind: 'weekly'; interval?: number; anchor: 'monday' | ... ; timezone?: string }
+  | { kind: 'monthly'; dayOfMonth: number; timezone?: string }
+  | { kind: 'relative'; offsetDays: number; relativeTo: { type: 'calendar_event'; key: string } }
+```
+
+**Access model (org role + process assignment):**
+
+| Action | Org permission | Process assignment |
+|---|---|---|
+| View process | `processes:read` | viewer, editor, owner, or approver on this version — OR global read-all roles (Super Admin, Compliance) |
+| Edit process | `processes:edit` | owner or editor on this version — OR Super Admin |
+| Assign editors/viewers | `processes:edit` or owner org role | **owner** on this process only (Super Admin always) |
+| Invite tenant users | `users:invite` | Super Admin only (unchanged from Phase 1) |
+
+**Rules:**
+- Super Admin (assigned by Aquilens / platform) onboards tenant users and org roles.
+- Process **Owner** assigns **Editors** and **Viewers** for that process only — not new tenant accounts.
+- Editors cannot assign other editors (strict delegation).
+- Staff with `processes:read` see only processes they are assigned to; Compliance / Super Admin see all.
+
+**API changes:**
+- Include `executionSchedule` on create/update/get
+- Include `access: { canEdit, canManagePeople, processRole }` on process detail
+- Filter `GET /processes` for staff to assigned processes only
+- `PUT /processes/:id/versions/:vId/people` — owner-only (or Super Admin); roles: owner | editor | viewer | approver
+- Demo mode: `GET /users` returns tenant demo users for people picker
+
+**UI changes:**
+- Governance step: split **Review frequency** and **Execution schedule** with helper text
+- People step: owner picker + lists for editors and viewers (add/remove)
+- Detail Overview tab: show both cadences in plain language
+- Edit button hidden unless `access.canEdit`; people management only when `access.canManagePeople`
+
+---
+
+### Seed Data (GIS demo)
+
+- `Record Student Attendance`: owner = gis-owner, viewer = gis-staff, execution = daily
+- `Enrol New Student`: owner = gis-owner, execution = ad_hoc
+- `Issue Fee Invoice`: owner = gis-owner, execution = monthly (1st)
+
+---
+
+### User Journeys
+
+1. As Super Admin, I invite users and assign org roles — process owners cannot invite tenant users
+2. As process Owner, I assign Editors and Viewers on my process
+3. As Editor, I can edit the SOP but cannot assign other people
+4. As Viewer (Staff), I see the process read-only and it appears in my list; I cannot edit
+5. As Compliance Officer, I see all processes regardless of assignment
+
+---
+
+### Automated Tests
+
+- Unit: execution schedule label formatting
+- Integration: staff sees only assigned processes in list
+- Integration: staff GET detail on assigned process = 200, edit = 403
+- Integration: owner PUT people with editor + viewer succeeds; staff PUT people = 403
+- Integration: create/update persists `executionSchedule` separately from `reviewFrequency`
+
+---
+
+### Definition of Done
+
+- [ ] Review frequency and execution schedule are separate fields with clear UI labels
+- [ ] Process people roles: owner, editor, viewer, approver
+- [ ] Owner can assign editors/viewers; editors cannot
+- [ ] Staff list/detail respects process assignments
+- [ ] Demo seed includes viewer assignment and sample schedules
+- [ ] Tests pass; no TypeScript errors
+
+---
+
 ## Phase 4 — AI SOP Generation
 
 **Goal:** A process owner can describe a process in plain English (text only — no file or voice yet) and Aquilens generates a complete, structured SOP draft using AI, flags gaps, and requires human review before saving.
 
 **Estimated effort:** 1.5 days
 
-**Prerequisites:** Phases 0–3 complete
+**Prerequisites:** Phases 0–3.5 complete
 
 ---
 

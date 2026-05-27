@@ -7,6 +7,7 @@ import { RequirePermission } from "../auth/require-permission.decorator";
 import { PermissionGuard } from "../auth/permission.guard";
 import type { AuthUser } from "../auth/auth.types";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
+import { demoSchoolScaffold } from "./demo-scaffold";
 
 type InstitutionType =
   | "school"
@@ -222,8 +223,8 @@ export class TenantsController {
       slug: "gis",
       institutionType: "school" as const,
       country: "Ghana",
-      onboardingComplete: false,
-      functions: [],
+      onboardingComplete: true,
+      functions: demoSchoolScaffold(),
     };
   }
 }
