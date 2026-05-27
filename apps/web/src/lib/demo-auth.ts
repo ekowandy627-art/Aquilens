@@ -33,6 +33,7 @@ export type DemoSession = {
 };
 
 const SESSION_KEY = "aquilens.auth-session.v1";
+export const DEMO_SESSION_COOKIE = "aquilens-demo-session";
 
 export const demoTenants: DemoTenant[] = [
   {
@@ -205,13 +206,24 @@ export function loadSession(): DemoSession | null {
   }
 }
 
+function setDemoSessionCookie(session: DemoSession) {
+  const encoded = encodeURIComponent(JSON.stringify(session));
+  document.cookie = `${DEMO_SESSION_COOKIE}=${encoded}; path=/; max-age=604800; samesite=lax`;
+}
+
+function clearDemoSessionCookie() {
+  document.cookie = `${DEMO_SESSION_COOKIE}=; path=/; max-age=0; samesite=lax`;
+}
+
 export function saveSession(session: DemoSession) {
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  setDemoSessionCookie(session);
   window.dispatchEvent(new Event("aquilens-session-changed"));
 }
 
 export function clearSession() {
   window.localStorage.removeItem(SESSION_KEY);
+  clearDemoSessionCookie();
   window.dispatchEvent(new Event("aquilens-session-changed"));
 }
 

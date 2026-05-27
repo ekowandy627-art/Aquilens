@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, apiFetchPublic } from "@/lib/api-client";
 import { signInDemo } from "@/lib/demo-auth";
 import {
   createSupabaseBrowserClient,
@@ -32,7 +32,7 @@ export function LoginForm() {
       });
 
       if (result?.error) {
-        await apiFetch("/auth/events/login-failed", {
+        await apiFetchPublic("/auth/events/login-failed", {
           method: "POST",
           body: JSON.stringify({ email, reason: result.error.message }),
         }).catch(() => undefined);
@@ -41,16 +41,11 @@ export function LoginForm() {
         return;
       }
 
+      signInDemo(email, password);
+
       await apiFetch("/auth/events/login", { method: "POST", body: "{}" }).catch(
         () => undefined,
       );
-
-      const demoResult = signInDemo(email, password);
-      if (demoResult.user) {
-        router.push("/dashboard");
-        router.refresh();
-        return;
-      }
 
       router.push("/dashboard");
       router.refresh();
@@ -60,7 +55,7 @@ export function LoginForm() {
     const demoResult = signInDemo(email, password);
 
     if (demoResult.error) {
-      await apiFetch("/auth/events/login-failed", {
+      await apiFetchPublic("/auth/events/login-failed", {
         method: "POST",
         body: JSON.stringify({ email, reason: demoResult.error }),
       }).catch(() => undefined);
