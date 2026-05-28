@@ -36,7 +36,14 @@ export type ProcessVersionRecord = {
   tenantId: string;
   processId: string;
   versionNumber: number;
-  status: "draft" | "under_review" | "active" | "superseded" | "rejected";
+  status:
+    | "draft"
+    | "under_review"
+    | "approved"
+    | "active"
+    | "superseded"
+    | "rejected"
+    | "archived";
   changeSummary?: string;
   createdBy?: string;
   createdAt: string;
@@ -45,6 +52,24 @@ export type ProcessVersionRecord = {
   rejectedBy?: string;
   rejectedAt?: string;
   rejectionComment?: string;
+  effectiveDate?: string;
+  reviewDueDate?: string;
+  publishedAt?: string;
+  publishedBy?: string;
+  archivedAt?: string;
+};
+
+export type ProcessDocumentRecord = {
+  id: string;
+  tenantId: string;
+  processId: string;
+  processVersionId?: string;
+  filename: string;
+  storagePath: string;
+  mimeType?: string;
+  byteSize?: number;
+  uploadedBy?: string;
+  createdAt: string;
 };
 
 export type ProcessRecord = {
@@ -70,7 +95,14 @@ export type ProcessRecord = {
   executionSchedule: ExecutionSchedule;
   creationSource: "manual" | "ai_generated";
   regulatoryReference?: string;
-  status: "draft" | "under_review" | "active" | "retired";
+  triggerDescription?: string;
+  participants: Array<{ role: string; userId?: string }>;
+  inputs?: string;
+  outputs?: string;
+  exceptions?: string;
+  relatedDocuments: unknown[];
+  acknowledgementRequired: boolean;
+  status: "draft" | "under_review" | "active" | "retired" | "archived";
   currentVersionId: string;
   createdBy?: string;
   createdAt: string;
@@ -133,6 +165,9 @@ function seedProcess(
     reviewFrequency: input.reviewFrequency ?? "annually",
     executionSchedule: input.executionSchedule ?? defaultExecutionSchedule,
     creationSource: input.creationSource ?? "manual",
+    participants: [],
+    relatedDocuments: [],
+    acknowledgementRequired: false,
     status: input.status,
     currentVersionId: versionId,
     createdBy: input.createdBy,
@@ -246,6 +281,32 @@ export class ProcessDemoStore {
     );
   }
 
+  /** Grants read access for acknowledgement assignees without removing existing roles. */
+  ensureViewerAccess(versionId: string, userIds: string[]) {
+    const existing = this.listPeople(versionId);
+    const rolesByUser = new Map(
+      existing
+        .filter((person) => person.userId)
+        .map((person) => [person.userId!, person.role]),
+    );
+
+    for (const userId of userIds) {
+      const current = rolesByUser.get(userId);
+      if (!current) {
+        const id = randomUUID();
+        store.people.set(id, {
+          id,
+          processVersionId: versionId,
+          userId,
+          role: "viewer",
+        });
+        rolesByUser.set(userId, "viewer");
+      }
+    }
+
+    return this.listPeople(versionId);
+  }
+
   countProcessesInArea(tenantId: string, functionId: string, areaId: string) {
     return [...store.processes.values()].filter(
       (process) =>
@@ -294,6 +355,9 @@ export class ProcessDemoStore {
       executionSchedule: input.executionSchedule ?? defaultExecutionSchedule,
       creationSource: input.creationSource ?? "manual",
       regulatoryReference: input.regulatoryReference,
+      participants: [],
+      relatedDocuments: [],
+      acknowledgementRequired: false,
       status: "draft",
       currentVersionId: versionId,
       createdBy: userId,
@@ -479,12 +543,12 @@ export class ProcessDemoStore {
     const now = new Date().toISOString();
     store.processes.set(processId, {
       ...process,
-      status: "active",
+      status: "under_review",
       updatedAt: now,
     });
     store.versions.set(version.id, {
       ...version,
-      status: "active",
+      status: "approved",
       approvedBy: approverId,
       approvedAt: now,
     });
@@ -589,6 +653,108 @@ export class ProcessDemoStore {
       process: store.processes.get(processId)!,
       version: newVersion,
     };
+  }
+
+  publishVersion(
+    tenantId: string,
+    processId: string,
+    publisherId: string,
+    input: { effectiveDate: string; reviewDueDate?: string },
+  ) {
+    const process = this.getProcess(tenantId, processId);
+    if (!process) {
+      return null;
+    }
+    const version = this.getVersion(process.currentVersionId);
+    if (!version) {
+      return null;
+    }
+    if (version.status !== "approved" && version.status !== "active") {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    store.processes.set(processId, {
+      ...process,
+      status: "active",
+      updatedAt: now,
+    });
+    store.versions.set(version.id, {
+      ...version,
+      status: "active",
+      effectiveDate: input.effectiveDate,
+      reviewDueDate: input.reviewDueDate,
+      publishedAt: now,
+      publishedBy: publisherId,
+    });
+
+    return {
+      process: store.processes.get(processId)!,
+      version: store.versions.get(version.id)!,
+    };
+  }
+
+  archiveProcess(tenantId: string, processId: string) {
+    const process = this.getProcess(tenantId, processId);
+    if (!process) {
+      return null;
+    }
+    const version = this.getVersion(process.currentVersionId);
+    const now = new Date().toISOString();
+
+    store.processes.set(processId, {
+      ...process,
+      status: "archived",
+      updatedAt: now,
+    });
+
+    if (version) {
+      store.versions.set(version.id, {
+        ...version,
+        status: "archived",
+        archivedAt: now,
+      });
+    }
+
+    return store.processes.get(processId)!;
+  }
+
+  listDocuments(tenantId: string, processId: string) {
+    return [...store.documents.values()]
+      .filter(
+        (document) =>
+          document.tenantId === tenantId && document.processId === processId,
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  addDocument(
+    tenantId: string,
+    processId: string,
+    input: {
+      filename: string;
+      storagePath: string;
+      mimeType?: string;
+      byteSize?: number;
+      uploadedBy?: string;
+      processVersionId?: string;
+    },
+  ) {
+    const id = randomUUID();
+    const document: ProcessDocumentRecord = {
+      id,
+      tenantId,
+      processId,
+      processVersionId: input.processVersionId,
+      filename: input.filename,
+      storagePath: input.storagePath,
+      mimeType: input.mimeType,
+      byteSize: input.byteSize,
+      uploadedBy: input.uploadedBy,
+      createdAt: new Date().toISOString(),
+    };
+    store.documents.set(id, document);
+    return document;
   }
 }
 

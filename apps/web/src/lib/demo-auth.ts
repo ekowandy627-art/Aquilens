@@ -67,7 +67,19 @@ export const demoRoles: DemoRole[] = [
     name: "Compliance Officer",
     description: "Read-only tenant oversight and audit pack generation.",
     isSystem: true,
-    permissions: ["processes:read", "workflows:read", "agents:read", "audit:read", "audit_packs:generate"],
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "agents:read",
+      "agents:create",
+      "agents:edit",
+      "audit:read",
+      "audit_packs:generate",
+      "standards:read",
+      "standards:manage",
+      "tenant_scaffold:read",
+      "acknowledgements:read",
+    ],
   },
   {
     id: "role-gis-head",
@@ -75,7 +87,15 @@ export const demoRoles: DemoRole[] = [
     name: "Department Head",
     description: "Function-scoped approval and workflow oversight.",
     isSystem: true,
-    permissions: ["processes:read", "processes:approve", "workflows:read"],
+    permissions: [
+      "processes:read",
+      "processes:approve",
+      "workflows:read",
+      "agents:read",
+      "agents:edit",
+      "tenant_scaffold:read",
+      "acknowledgements:read",
+    ],
   },
   {
     id: "role-gis-owner",
@@ -83,7 +103,19 @@ export const demoRoles: DemoRole[] = [
     name: "Process Owner",
     description: "Create, edit, and submit owned processes.",
     isSystem: true,
-    permissions: ["processes:create", "processes:read", "processes:edit", "workflows:read"],
+    permissions: [
+      "processes:create",
+      "processes:read",
+      "processes:edit",
+      "processes:publish",
+      "standards:read",
+      "standards:manage",
+      "tenant_scaffold:read",
+      "tenant_scaffold:manage",
+      "workflows:read",
+      "acknowledgements:read",
+      "acknowledgements:manage",
+    ],
   },
   {
     id: "role-gis-staff",
@@ -91,7 +123,13 @@ export const demoRoles: DemoRole[] = [
     name: "Staff",
     description: "Complete assigned tasks and view own process work.",
     isSystem: true,
-    permissions: ["processes:read", "workflows:read", "workflows:complete"],
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "workflows:complete",
+      "tenant_scaffold:read",
+      "acknowledgements:complete",
+    ],
   },
   {
     id: "role-hospital-admin",
@@ -187,6 +225,27 @@ export const demoUsers: DemoUser[] = [
   },
 ];
 
+function loadSessionFromCookie(): DemoSession | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const prefix = `${DEMO_SESSION_COOKIE}=`;
+  const entry = document.cookie
+    .split("; ")
+    .find((cookie) => cookie.startsWith(prefix));
+
+  if (!entry) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(decodeURIComponent(entry.slice(prefix.length))) as DemoSession;
+  } catch {
+    return null;
+  }
+}
+
 export function loadSession(): DemoSession | null {
   if (typeof window === "undefined") {
     return null;
@@ -194,16 +253,21 @@ export function loadSession(): DemoSession | null {
 
   const stored = window.localStorage.getItem(SESSION_KEY);
 
-  if (!stored) {
-    return null;
+  if (stored) {
+    try {
+      return JSON.parse(stored) as DemoSession;
+    } catch {
+      window.localStorage.removeItem(SESSION_KEY);
+    }
   }
 
-  try {
-    return JSON.parse(stored) as DemoSession;
-  } catch {
-    window.localStorage.removeItem(SESSION_KEY);
-    return null;
+  const fromCookie = loadSessionFromCookie();
+  if (fromCookie) {
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify(fromCookie));
+    return fromCookie;
   }
+
+  return null;
 }
 
 function setDemoSessionCookie(session: DemoSession) {

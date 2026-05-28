@@ -7,12 +7,16 @@ import {
   ProcessStepBuilder,
   type DraftStep,
 } from "@/components/processes/process-step-builder";
+import { ProcessDocumentsPanel } from "@/components/processes/process-documents-panel";
+import { PublishProcessDialog } from "@/components/processes/publish-process-dialog";
 import { DetailPageSkeleton } from "@/components/list-table-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { PrimaryButton } from "@/components/primary-button";
 import { apiFetch } from "@/lib/api-client";
 import {
   type ProcessDetail,
+  type ProcessVersionSummary,
+  formatParticipants,
   riskBadgeClass,
   roleLabel,
   statusBadgeClass,
@@ -22,30 +26,24 @@ import {
   formatReviewFrequency,
 } from "@/lib/execution-schedule";
 import { AuditTrailTable } from "@/components/audit-trail-table";
+import { ProcessAcknowledgementsPanel } from "@/components/acknowledgements/process-acknowledgements-panel";
+import { canReadAcknowledgements } from "@/lib/acknowledgements";
+import { useAuthContext } from "@/lib/use-auth-context";
 
-const tabs = [
+const allTabs = [
   "Overview",
   "Steps",
   "Governance",
+  "Control",
+  "Documents",
   "People",
+  "Acknowledgements",
   "Version History",
   "Approval History",
   "Audit",
 ] as const;
 
-type ProcessVersion = {
-  id: string;
-  versionNumber: number;
-  status: string;
-  changeSummary?: string;
-  createdAt: string;
-  approvedBy?: string;
-  approvedAt?: string;
-  rejectedBy?: string;
-  rejectedAt?: string;
-  rejectionComment?: string;
-  isCurrent?: boolean;
-};
+type Tab = (typeof allTabs)[number];
 
 type ApprovalSummary = {
   id: string;
@@ -59,15 +57,20 @@ type ApprovalSummary = {
 
 export default function ProcessDetailPage() {
   const params = useParams<{ id: string }>();
+  const auth = useAuthContext();
+  const permissions = auth.roles.flatMap((role) => role.permissions);
+  const tabs = allTabs.filter(
+    (tab) => tab !== "Acknowledgements" || canReadAcknowledgements(permissions),
+  );
 
   const [data, setData] = useState<ProcessDetail | null>(null);
-  const [versions, setVersions] = useState<ProcessVersion[]>([]);
+  const [versions, setVersions] = useState<ProcessVersionSummary[]>([]);
   const [approvals, setApprovals] = useState<ApprovalSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] =
-    useState<(typeof tabs)[number]>("Overview");
+  const [publishOpen, setPublishOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
 
   const allowEdit = data?.access.canEdit ?? false;
   const lifecycle = data?.lifecycle;
@@ -77,7 +80,7 @@ export default function ProcessDetailPage() {
     setData(detail);
     if (activeTab === "Version History" || activeTab === "Approval History") {
       const [versionRows, approvalRows] = await Promise.all([
-        apiFetch<ProcessVersion[]>(`/processes/${params.id}/versions`),
+        apiFetch<ProcessVersionSummary[]>(`/processes/${params.id}/versions`),
         apiFetch<ApprovalSummary[]>(`/processes/${params.id}/approvals`),
       ]);
       setVersions(versionRows);
@@ -113,7 +116,7 @@ export default function ProcessDetailPage() {
       return;
     }
     void Promise.all([
-      apiFetch<ProcessVersion[]>(`/processes/${params.id}/versions`),
+      apiFetch<ProcessVersionSummary[]>(`/processes/${params.id}/versions`),
       apiFetch<ApprovalSummary[]>(`/processes/${params.id}/approvals`),
     ]).then(([versionRows, approvalRows]) => {
       setVersions(versionRows);
@@ -145,6 +148,11 @@ export default function ProcessDetailPage() {
       evidenceRequired: step.evidenceRequired,
       agents: step.agents,
     })) ?? [];
+
+  const versionStatusLabel =
+    data?.currentVersion?.status === "active"
+      ? "Active"
+      : data?.currentVersion?.status?.replace("_", " ");
 
   return (
     <>
@@ -199,11 +207,23 @@ export default function ProcessDetailPage() {
             >
               {data.status.replace("_", " ")}
             </span>
+            {data.currentVersion ? (
+              <span
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs capitalize ${statusBadgeClass(data.currentVersion.status)}`}
+              >
+                Version {versionStatusLabel}
+              </span>
+            ) : null}
             <span
               className={`inline-flex rounded-full px-2.5 py-1 text-xs capitalize ${riskBadgeClass(data.riskRating)}`}
             >
               {data.riskRating} risk
             </span>
+            {lifecycle?.reviewOverdue ? (
+              <span className="inline-flex rounded-full bg-red-50 px-2.5 py-1 text-xs text-red-700">
+                Review overdue
+              </span>
+            ) : null}
             <span className="text-xs text-text-muted">
               Updated {new Date(data.updatedAt).toLocaleString()}
             </span>
@@ -214,6 +234,7 @@ export default function ProcessDetailPage() {
               <button
                 key={tab}
                 type="button"
+                data-testid={`process-tab-${tab.toLowerCase().replace(/\s+/g, "-")}`}
                 onClick={() => setActiveTab(tab)}
                 className={`rounded-md px-3 py-1.5 text-sm ${
                   activeTab === tab
@@ -249,9 +270,31 @@ export default function ProcessDetailPage() {
                 />
                 <DetailField label="Tags" value={data.tags.join(", ") || "—"} />
                 <DetailField
+                  label="Linked standards"
+                  value={
+                    data.linkedGuidance?.length
+                      ? data.linkedGuidance
+                          .map((link) => link.packName ?? link.packSlug ?? link.packId)
+                          .join(", ")
+                      : "—"
+                  }
+                />
+                <DetailField
                   label="Process area"
                   value={data.processAreaName ?? "—"}
                 />
+                {data.currentVersion?.effectiveDate ? (
+                  <DetailField
+                    label="Effective date"
+                    value={data.currentVersion.effectiveDate}
+                  />
+                ) : null}
+                {data.currentVersion?.reviewDueDate ? (
+                  <DetailField
+                    label="Review due"
+                    value={data.currentVersion.reviewDueDate}
+                  />
+                ) : null}
               </div>
             ) : null}
 
@@ -284,7 +327,28 @@ export default function ProcessDetailPage() {
                   label="Regulatory reference"
                   value={data.regulatoryReference}
                 />
+                <DetailField
+                  label="Acknowledgements required on publish"
+                  value={data.acknowledgementRequired ? "Yes" : "No"}
+                />
               </div>
+            ) : null}
+
+            {activeTab === "Control" ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <DetailField label="Trigger" value={data.triggerDescription} />
+                <DetailField
+                  label="Participants"
+                  value={formatParticipants(data.participants)}
+                />
+                <DetailField label="Inputs" value={data.inputs} />
+                <DetailField label="Outputs" value={data.outputs} />
+                <DetailField label="Exceptions" value={data.exceptions} />
+              </div>
+            ) : null}
+
+            {activeTab === "Documents" ? (
+              <ProcessDocumentsPanel processId={data.id} canUpload={allowEdit} />
             ) : null}
 
             {activeTab === "People" ? (
@@ -307,46 +371,17 @@ export default function ProcessDetailPage() {
               </div>
             ) : null}
 
+            {activeTab === "Acknowledgements" ? (
+              <ProcessAcknowledgementsPanel processId={data.id} />
+            ) : null}
+
             {activeTab === "Version History" ? (
               <div className="space-y-3">
                 {versions.length === 0 ? (
-                  <div className="rounded-md border border-border px-3 py-2">
-                    <div className="font-medium">
-                      v{data.currentVersion?.versionNumber ?? 1}
-                    </div>
-                    <div className="mt-1 text-xs capitalize text-text-muted">
-                      {data.currentVersion?.status ?? data.status}
-                      {data.currentVersion ? " · current" : ""}
-                    </div>
-                  </div>
+                  <VersionCard version={data.currentVersion} fallback />
                 ) : (
                   versions.map((version) => (
-                    <div
-                      key={version.id}
-                      className="rounded-md border border-border px-3 py-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium">v{version.versionNumber}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-xs capitalize ${statusBadgeClass(version.status)}`}
-                        >
-                          {version.status}
-                        </span>
-                      </div>
-                      {version.isCurrent ? (
-                        <p className="mt-1 text-xs text-brand-teal">Current version</p>
-                      ) : null}
-                      {version.changeSummary ? (
-                        <p className="mt-1 text-xs text-text-muted">
-                          {version.changeSummary}
-                        </p>
-                      ) : null}
-                      {version.rejectionComment ? (
-                        <p className="mt-1 text-xs text-red-600">
-                          Rejected: {version.rejectionComment}
-                        </p>
-                      ) : null}
-                    </div>
+                    <VersionCard key={version.id} version={version} />
                   ))
                 )}
               </div>
@@ -363,7 +398,7 @@ export default function ProcessDetailPage() {
                       className="rounded-md border border-border px-3 py-2"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="capitalize font-medium">{item.status}</span>
+                        <span className="font-medium capitalize">{item.status}</span>
                         <span className="text-xs text-text-muted">
                           {new Date(item.submittedAt).toLocaleString()}
                         </span>
@@ -402,6 +437,13 @@ export default function ProcessDetailPage() {
                 Submit for Approval
               </PrimaryButton>
             ) : null}
+            {lifecycle?.canPublish ? (
+              <span data-testid="publish-sop-button">
+                <PrimaryButton disabled={busy} onClick={() => setPublishOpen(true)}>
+                  Publish
+                </PrimaryButton>
+              </span>
+            ) : null}
             {lifecycle?.canStartWorkflow ? (
               <Link href={`/workflows/new?processId=${params.id}`}>
                 <button
@@ -421,10 +463,103 @@ export default function ProcessDetailPage() {
                 Start Workflow
               </button>
             )}
+            {lifecycle?.canArchive ? (
+              <button
+                type="button"
+                disabled={busy}
+                data-testid="archive-sop-button"
+                className="rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-bg"
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      "Archive this SOP? It will remain readable but leave active lists.",
+                    )
+                  ) {
+                    void runAction(async () => {
+                      await apiFetch(`/processes/${params.id}/archive`, {
+                        method: "POST",
+                      });
+                    });
+                  }
+                }}
+              >
+                Archive
+              </button>
+            ) : null}
           </div>
         </div>
       )}
+
+      {data ? (
+        <PublishProcessDialog
+          open={publishOpen}
+          processName={data.name}
+          acknowledgementRequired={data.acknowledgementRequired}
+          busy={busy}
+          onClose={() => setPublishOpen(false)}
+          onPublish={(input) =>
+            void runAction(async () => {
+              await apiFetch(`/processes/${params.id}/publish`, {
+                method: "POST",
+                body: JSON.stringify(input),
+              });
+              setPublishOpen(false);
+            })
+          }
+        />
+      ) : null}
     </>
+  );
+}
+
+function VersionCard({
+  version,
+  fallback = false,
+}: {
+  version: ProcessVersionSummary | null;
+  fallback?: boolean;
+}) {
+  if (!version) {
+    return (
+      <div className="rounded-md border border-border px-3 py-2 text-text-muted">
+        No version data.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-border px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-medium">v{version.versionNumber}</span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs capitalize ${statusBadgeClass(version.status)}`}
+        >
+          {version.status === "active" ? "Active" : version.status.replace("_", " ")}
+        </span>
+      </div>
+      {version.isCurrent || fallback ? (
+        <p className="mt-1 text-xs text-brand-teal">Current version</p>
+      ) : null}
+      {version.changeSummary ? (
+        <p className="mt-1 text-xs text-text-muted">{version.changeSummary}</p>
+      ) : null}
+      {version.effectiveDate ? (
+        <p className="mt-1 text-xs text-text-muted">
+          Effective {version.effectiveDate}
+        </p>
+      ) : null}
+      {version.reviewDueDate ? (
+        <p className="mt-1 text-xs text-text-muted">
+          Review due {version.reviewDueDate}
+          {version.reviewOverdue ? " · overdue" : ""}
+        </p>
+      ) : null}
+      {version.publishedAt ? (
+        <p className="mt-1 text-xs text-text-muted">
+          Went live {new Date(version.publishedAt).toLocaleString()}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

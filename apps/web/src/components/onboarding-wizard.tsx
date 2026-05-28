@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Check, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,13 +11,23 @@ import {
   type FunctionNode,
   type InstitutionType,
 } from "@/lib/scaffolds";
+import { LegalDisclaimer } from "@/components/legal-disclaimer";
 import {
   createTenantProfile,
   saveTenantProfile,
   saveTenantProfileToApi,
 } from "@/lib/tenant-storage";
+import { GuidanceSelectionPanel } from "@/components/guidance/guidance-selection-panel";
+import {
+  getGuidanceRecommendations,
+  listGuidancePacks,
+  saveGuidanceSelections,
+  saveOrganisationProfile,
+  type GuidanceRecommendation,
+} from "@/lib/guidance";
+import type { GuidanceSelectionStatus } from "@aquilens/shared";
 
-const steps = ["Institution", "Review", "Edit", "Confirm", "Done"];
+const steps = ["Institution", "Standards", "Review", "Edit", "Confirm", "Done"];
 
 export function OnboardingWizard() {
   const router = useRouter();
@@ -31,6 +41,40 @@ export function OnboardingWizard() {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recommendations, setRecommendations] = useState<GuidanceRecommendation[]>(
+    [],
+  );
+  const [packIdsBySlug, setPackIdsBySlug] = useState<Record<string, string>>({});
+  const [pendingGuidanceSelections, setPendingGuidanceSelections] = useState<
+    Array<{ packId: string; selectionStatus: GuidanceSelectionStatus }>
+  >([]);
+  const [standardsReady, setStandardsReady] = useState(false);
+
+  useEffect(() => {
+    if (step !== 1 || recommendations.length > 0) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const [packs, recs] = await Promise.all([
+          listGuidancePacks(),
+          getGuidanceRecommendations({
+            organisationType: institutionType,
+            country,
+          }),
+        ]);
+        setPackIdsBySlug(Object.fromEntries(packs.map((pack) => [pack.slug, pack.id])));
+        setRecommendations(recs);
+      } catch (loadError) {
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Unable to load guidance recommendations",
+        );
+      }
+    })();
+  }, [step, recommendations.length, institutionType, country]);
 
   const totalAreas = useMemo(
     () => functions.reduce((total, fn) => total + fn.areas.length, 0),
@@ -116,6 +160,28 @@ export function OnboardingWizard() {
     );
   }
 
+  async function continueFromStep() {
+    if (step === 1) {
+      setSaving(true);
+      setError(null);
+      try {
+        await saveOrganisationProfile({
+          organisationType: institutionType,
+          countries: [country],
+        });
+        await saveGuidanceSelections(pendingGuidanceSelections);
+        setStep(2);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not save guidance");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    setStep((current) => current + 1);
+  }
+
   async function finish() {
     setSaving(true);
     setError(null);
@@ -130,7 +196,7 @@ export function OnboardingWizard() {
     try {
       saveTenantProfile(profile);
       await saveTenantProfileToApi(profile);
-      setStep(4);
+      setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save scaffold");
     } finally {
@@ -252,6 +318,24 @@ export function OnboardingWizard() {
         )}
 
         {step === 1 && (
+          <GuidanceSelectionPanel
+            recommendations={recommendations}
+            packIdsBySlug={packIdsBySlug}
+            onChange={(rows) => {
+              setPendingGuidanceSelections(
+                rows
+                  .filter((row) => row.selectionStatus && row.packId)
+                  .map((row) => ({
+                    packId: row.packId,
+                    selectionStatus: row.selectionStatus as GuidanceSelectionStatus,
+                  })),
+              );
+            }}
+            onReadyChange={setStandardsReady}
+          />
+        )}
+
+        {step === 2 && (
           <ScaffoldSummary
             title={`${institutionTypeLabels[institutionType]} scaffold`}
             description="Review the default structure before editing. Everything can be changed now or later from Settings."
@@ -259,7 +343,7 @@ export function OnboardingWizard() {
           />
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <ScaffoldEditor
             functions={functions}
             onAddFunction={addFunction}
@@ -271,15 +355,18 @@ export function OnboardingWizard() {
           />
         )}
 
-        {step === 3 && (
-          <ScaffoldSummary
-            title="Confirm setup"
-            description={`${name} will start with ${functions.length} functions and ${totalAreas} process areas. You can refine this structure after onboarding.`}
-            functions={functions}
-          />
+        {step === 4 && (
+          <>
+            <ScaffoldSummary
+              title="Confirm setup"
+              description={`${name} will start with ${functions.length} functions and ${totalAreas} process areas. You can refine this structure after onboarding.`}
+              functions={functions}
+            />
+            <LegalDisclaimer className="mt-6" compact />
+          </>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="py-10 text-center">
             <div className="mx-auto grid size-12 place-items-center rounded-full bg-teal-50 text-brand-teal">
               <Check className="size-5" aria-hidden="true" />
@@ -308,7 +395,7 @@ export function OnboardingWizard() {
 
         {error && <p className="mt-5 text-sm text-red-600">{error}</p>}
 
-        {step < 4 && (
+        {step < 5 && (
           <div className="mt-8 flex justify-between border-t border-border pt-5">
             <Button
               type="button"
@@ -318,15 +405,22 @@ export function OnboardingWizard() {
             >
               Back
             </Button>
-            {step === 3 ? (
+            {step === 4 ? (
               <Button type="button" onClick={() => void finish()} disabled={saving}>
                 {saving ? "Saving..." : "Confirm scaffold"}
               </Button>
             ) : (
               <Button
                 type="button"
-                onClick={() => setStep((current) => current + 1)}
-                disabled={!name.trim() || !country.trim()}
+                data-testid="onboarding-continue"
+                onClick={() => void continueFromStep()}
+                disabled={
+                  step === 0
+                    ? !name.trim() || !country.trim()
+                    : step === 1
+                      ? !standardsReady || pendingGuidanceSelections.length < 3
+                      : false
+                }
               >
                 Continue
               </Button>

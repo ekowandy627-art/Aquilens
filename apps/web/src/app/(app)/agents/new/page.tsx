@@ -156,7 +156,7 @@ export default function RegisterAgentPage() {
           <Link href="/agents" className="text-sm text-text-muted hover:text-slate-900">
             Cancel
           </Link>
-          <PrimaryButton disabled={busy || !name.trim()}>
+          <PrimaryButton type="submit" disabled={busy || !name.trim()}>
             Register agent
           </PrimaryButton>
         </div>

@@ -2,6 +2,11 @@ import { resetAgentDemoStore } from "../agents/agent-demo.store";
 import { resetAuditDemoStore } from "../audit/audit-demo.store";
 import { resetAuditPacksDemoStore } from "../audit/audit-packs-demo.store";
 import { resetGuestAccessDemoStore } from "../audit/guest-access-demo.store";
+import { resetGuidanceDemoStore } from "../standards/guidance-demo.store";
+import {
+  resetAcknowledgementDemoStore,
+  seedGisEnrolmentAcknowledgementDemo,
+} from "../acknowledgements/acknowledgement-demo.store";
 import { resetEvidenceDemoStore } from "../evidence/evidence-demo.store";
 import { resetEscalationDemoStore } from "../notifications/escalation-demo.store";
 import { resetNotificationDemoStore } from "../notifications/notification-demo.store";
@@ -44,7 +49,10 @@ const GIS_DEMO_USERS = [
  * Order matters: processes (and approvals) first, then dependent stores.
  */
 export function resetGisDemoStores(): GisDemoSummary {
+  resetGuidanceDemoStore();
+  resetAcknowledgementDemoStore();
   resetProcessDemoStore();
+  seedGisEnrolmentAcknowledgementDemo();
   resetWorkflowDemoStore();
   resetAgentDemoStore();
   resetAuditDemoStore();

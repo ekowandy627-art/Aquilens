@@ -48,7 +48,13 @@ export async function middleware(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    isAuthenticated = Boolean(user);
+    const allowDemoSessionCookie =
+      process.env.ALLOW_DEMO_SESSION === "true" ||
+      process.env.NODE_ENV !== "production";
+
+    isAuthenticated =
+      Boolean(user) ||
+      (allowDemoSessionCookie && hasDemoSessionCookie(request));
   } else {
     isAuthenticated = hasDemoSessionCookie(request);
   }

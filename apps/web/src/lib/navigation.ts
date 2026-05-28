@@ -1,4 +1,5 @@
 import {
+  BookOpenCheck,
   Bot,
   ClipboardList,
   FileText,
@@ -75,7 +76,9 @@ export function visibleNavItems(roleNames: string[]) {
     );
 
   if (isStaffOnly) {
-    return navItems.filter((item) => item.href === "/dashboard");
+    return navItems.filter((item) =>
+      ["/dashboard", "/my-acknowledgements"].includes(item.href),
+    );
   }
 
   return [...navItems];

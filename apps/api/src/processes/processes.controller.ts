@@ -3,14 +3,18 @@ import {
   Controller,
   Delete,
   Get,
+  HttpException,
   Inject,
   Param,
   Patch,
   Post,
   Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { AuditService } from "../audit/audit.service";
 import { AuthGuard } from "../auth/auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -20,6 +24,7 @@ import type { AuthUser } from "../auth/auth.types";
 import { ProcessesService } from "./processes.service";
 import type { ExecutionSchedule } from "./execution-schedule";
 import type { ProcessPersonRole } from "./execution-schedule";
+import { ProcessLifecycleError } from "../approvals/process-lifecycle";
 import { ProcessAccessError } from "./process-access";
 
 type CreateProcessDto = {
@@ -43,7 +48,21 @@ type CreateProcessDto = {
 };
 
 type UpdateProcessDto = Partial<CreateProcessDto> & {
-  status?: "draft" | "under_review" | "active" | "retired";
+  status?: "draft" | "under_review" | "active" | "retired" | "archived";
+  triggerDescription?: string;
+  participants?: Array<{ role: string; userId?: string }>;
+  inputs?: string;
+  outputs?: string;
+  exceptions?: string;
+  relatedDocuments?: unknown[];
+  acknowledgementRequired?: boolean;
+};
+
+type PublishProcessDto = {
+  effectiveDate: string;
+  reviewDueDate?: string;
+  acknowledgementRequired?: boolean;
+  acknowledgementDueDate?: string;
 };
 
 type StepDto = {
@@ -194,6 +213,116 @@ export class ProcessesController {
       return { success: true, data };
     } catch (error) {
       return this.error("PROCESS_UPDATE_FAILED", error, 422);
+    }
+  }
+
+  @Post(":id/publish")
+  @RequirePermission("processes", "publish")
+  async publish(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @Body() dto: PublishProcessDto,
+  ) {
+    try {
+      const data = await this.processes.publish(user, id, dto);
+      if (!data) {
+        return {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Process not found.", status: 404 },
+        };
+      }
+
+      await this.audit.log(user, {
+        eventType: "sop.published",
+        entityType: "Process",
+        entityId: id,
+        action: `Published SOP ${id}`,
+        metadata: {
+          effectiveDate: dto.effectiveDate,
+          reviewDueDate: dto.reviewDueDate,
+        },
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      return this.mapError(error);
+    }
+  }
+
+  @Post(":id/archive")
+  @RequirePermission("processes", "edit")
+  async archive(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    try {
+      const data = await this.processes.archive(user, id);
+      if (!data) {
+        return {
+          success: false,
+          error: { code: "NOT_FOUND", message: "Process not found.", status: 404 },
+        };
+      }
+
+      await this.audit.log(user, {
+        eventType: "process.archived",
+        entityType: "Process",
+        entityId: id,
+        action: `Archived process ${id}`,
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      return this.mapError(error);
+    }
+  }
+
+  @Get(":id/documents")
+  @RequirePermission("processes", "read")
+  async listDocuments(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    try {
+      const data = await this.processes.listDocuments(user, id);
+      return { success: true, data };
+    } catch (error) {
+      return this.mapError(error);
+    }
+  }
+
+  @Post(":id/documents")
+  @RequirePermission("processes", "edit")
+  @UseInterceptors(FileInterceptor("file"))
+  async uploadDocument(
+    @CurrentUser() user: AuthUser,
+    @Param("id") id: string,
+    @UploadedFile()
+    file:
+      | { originalname: string; mimetype: string; size: number; buffer: Buffer }
+      | undefined,
+  ) {
+    if (!file) {
+      return {
+        success: false,
+        error: { code: "FILE_REQUIRED", message: "File is required.", status: 422 },
+      };
+    }
+
+    try {
+      const data = await this.processes.addDocument(user, id, {
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        buffer: file.buffer,
+      });
+
+      await this.audit.log(user, {
+        eventType: "process.document_uploaded",
+        entityType: "ProcessDocument",
+        entityId: data.id,
+        entityName: data.filename,
+        action: `Uploaded document "${data.filename}"`,
+        metadata: { processId: id },
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      return this.mapError(error);
     }
   }
 
@@ -371,27 +500,52 @@ export class ProcessesController {
     }
   }
 
-  private mapError(error: unknown) {
+  private mapError(error: unknown): never {
+    if (error instanceof ProcessLifecycleError) {
+      const status =
+        error.code === "NOT_FOUND"
+          ? 404
+          : error.code === "FILE_TOO_LARGE"
+            ? 413
+            : 422;
+      throw new HttpException(
+        {
+          success: false,
+          error: { code: error.code, message: error.message, status },
+        },
+        status,
+      );
+    }
+
     if (error instanceof ProcessAccessError) {
       const status = error.code === "NOT_FOUND" ? 404 : 403;
-      return {
-        success: false,
-        error: { code: error.code, message: error.message, status },
-      };
+      throw new HttpException(
+        {
+          success: false,
+          error: { code: error.code, message: error.message, status },
+        },
+        status,
+      );
     }
 
     if (error instanceof Error && error.message === "Process not found") {
-      return {
-        success: false,
-        error: { code: "NOT_FOUND", message: error.message, status: 404 },
-      };
+      throw new HttpException(
+        {
+          success: false,
+          error: { code: "NOT_FOUND", message: error.message, status: 404 },
+        },
+        404,
+      );
     }
 
     const message = error instanceof Error ? error.message : "Request failed";
-    return {
-      success: false,
-      error: { code: "PROCESS_REQUEST_FAILED", message, status: 422 },
-    };
+    throw new HttpException(
+      {
+        success: false,
+        error: { code: "PROCESS_REQUEST_FAILED", message, status: 422 },
+      },
+      422,
+    );
   }
 
   private error(code: string, error: unknown, status: number) {

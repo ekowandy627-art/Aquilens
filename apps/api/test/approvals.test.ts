@@ -76,7 +76,16 @@ describe("approvals API", () => {
       .send({ comment: "Looks good" })
       .expect(201)
       .expect((response) => {
-        assert.equal(response.body.data.status, "active");
+        assert.equal(response.body.data.status, "approved");
+      });
+
+    await request(app.getHttpServer())
+      .post("/api/v1/processes/proc-gis-hr-recruitment/publish")
+      .set("Authorization", "Bearer demo:user-gis-owner")
+      .send({ effectiveDate: "2026-06-01", reviewDueDate: "2027-06-01" })
+      .expect(201)
+      .expect((publishResponse) => {
+        assert.equal(publishResponse.body.data.status, "active");
       });
 
     await app.close();

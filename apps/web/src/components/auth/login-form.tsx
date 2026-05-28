@@ -32,6 +32,16 @@ export function LoginForm() {
       });
 
       if (result?.error) {
+        const demoFallback = signInDemo(email, password);
+        if (!demoFallback.error) {
+          await apiFetch("/auth/events/login", { method: "POST", body: "{}" }).catch(
+            () => undefined,
+          );
+          router.push("/dashboard");
+          router.refresh();
+          return;
+        }
+
         await apiFetchPublic("/auth/events/login-failed", {
           method: "POST",
           body: JSON.stringify({ email, reason: result.error.message }),

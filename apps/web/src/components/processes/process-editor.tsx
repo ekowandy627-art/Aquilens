@@ -20,7 +20,11 @@ import {
   defaultExecutionSchedule,
   type ExecutionSchedule,
 } from "@/lib/execution-schedule";
-import type { ProcessDetail } from "@/lib/processes";
+import {
+  parseParticipantsText,
+  participantsToText,
+  type ProcessDetail,
+} from "@/lib/processes";
 import { useAuthContext } from "@/lib/use-auth-context";
 
 type TenantFunction = {
@@ -81,6 +85,18 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
   );
   const [executionSchedule, setExecutionSchedule] = useState<ExecutionSchedule>(
     initial?.executionSchedule ?? defaultExecutionSchedule,
+  );
+  const [triggerDescription, setTriggerDescription] = useState(
+    initial?.triggerDescription ?? "",
+  );
+  const [participantsText, setParticipantsText] = useState(
+    participantsToText(initial?.participants ?? []),
+  );
+  const [inputs, setInputs] = useState(initial?.inputs ?? "");
+  const [outputs, setOutputs] = useState(initial?.outputs ?? "");
+  const [exceptions, setExceptions] = useState(initial?.exceptions ?? "");
+  const [acknowledgementRequired, setAcknowledgementRequired] = useState(
+    initial?.acknowledgementRequired ?? false,
   );
   const [steps, setSteps] = useState<DraftStep[]>(
     initial?.steps.map((step) => ({
@@ -248,6 +264,12 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
         approvalRequired,
         reviewFrequency,
         executionSchedule,
+        triggerDescription: triggerDescription.trim() || undefined,
+        participants: parseParticipantsText(participantsText),
+        inputs: inputs.trim() || undefined,
+        outputs: outputs.trim() || undefined,
+        exceptions: exceptions.trim() || undefined,
+        acknowledgementRequired,
       };
 
       if (mode === "create" && redirectAfterCreate) {
@@ -290,6 +312,12 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
     approvalRequired,
     reviewFrequency,
     executionSchedule,
+    triggerDescription,
+    participantsText,
+    inputs,
+    outputs,
+    exceptions,
+    acknowledgementRequired,
     mode,
     router,
     syncStepsAndPeople,
@@ -529,6 +557,60 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
                   />
                   Approval required before activation
                 </label>
+                <Field label="Trigger" className="md:col-span-2">
+                  <textarea
+                    value={triggerDescription}
+                    onChange={(event) => setTriggerDescription(event.target.value)}
+                    data-testid="process-trigger"
+                    className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm"
+                  />
+                </Field>
+                <Field
+                  label="Participants (one per line, optional user id after colon)"
+                  className="md:col-span-2"
+                >
+                  <textarea
+                    value={participantsText}
+                    onChange={(event) => setParticipantsText(event.target.value)}
+                    data-testid="process-participants"
+                    className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm"
+                  />
+                </Field>
+                <Field label="Inputs">
+                  <textarea
+                    value={inputs}
+                    onChange={(event) => setInputs(event.target.value)}
+                    data-testid="process-inputs"
+                    className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm"
+                  />
+                </Field>
+                <Field label="Outputs">
+                  <textarea
+                    value={outputs}
+                    onChange={(event) => setOutputs(event.target.value)}
+                    data-testid="process-outputs"
+                    className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm"
+                  />
+                </Field>
+                <Field label="Exceptions" className="md:col-span-2">
+                  <textarea
+                    value={exceptions}
+                    onChange={(event) => setExceptions(event.target.value)}
+                    data-testid="process-exceptions"
+                    className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm"
+                  />
+                </Field>
+                <label className="flex items-center gap-2 text-sm md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={acknowledgementRequired}
+                    onChange={(event) =>
+                      setAcknowledgementRequired(event.target.checked)
+                    }
+                    data-testid="process-acknowledgement-required"
+                  />
+                  Require acknowledgements when published
+                </label>
               </div>
             ) : null}
 
@@ -605,14 +687,16 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
 function Field({
   label,
   hint,
+  className,
   children,
 }: {
   label: string;
   hint?: string;
+  className?: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm">
+    <label className={`grid gap-2 text-sm ${className ?? ""}`}>
       <span className="font-medium text-slate-950">{label}</span>
       {hint ? <span className="text-xs text-text-muted">{hint}</span> : null}
       {children}

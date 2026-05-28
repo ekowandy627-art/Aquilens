@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@aquilens/shared": ["../../packages/shared/src/index.ts"],
+      "@aquilens/shared/*": ["../../packages/shared/src/*"]
     }
   },
   "include": [

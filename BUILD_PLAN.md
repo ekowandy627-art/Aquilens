@@ -40,6 +40,16 @@ Each phase section is a self-contained build prompt. Hand it to an AI code assis
 | 9 | Notifications + Dashboard | Role-based dashboard, notification bell, staff task view |
 | 10 | Audit Trail + Report Export | Audit trail viewer, audit pack PDF generation + download |
 | 11 | GIS Demo Hardening | One-command reset, polished demo tenant, full story flow |
+| 12 | Product Language & Legal Framing | Disclaimers, alignment wording, role matrix |
+| 13 | SOP Control Enrichment | Publish/effective/review dates, upload, richer sections |
+| 14 | Standards Library & Selection | MVP guidance packs, tenant selection, recommendations |
+| 15 | Staff Acknowledgement | Assign, confirm, overdue, version-specific ack |
+| 16 | Standards Alignment Dashboard | Governance metrics (not operational dashboard) |
+| 17 | Internal Audit Engine | Scoped runs, automated checks from library |
+| 18 | Findings & Corrective Actions | Severity, owners, closure loop |
+| 19 | Evidence Pack v2 | Full PRD contents, PDF/DOCX/XLSX/CSV |
+
+**Detailed schema, routes, estimates, and test cases (acceptance + UI + API + unit):** see [`docs/PRD_DELTA_PLAN.md`](docs/PRD_DELTA_PLAN.md) (from product requirements doc). Phases 12–19 define **~205** numbered test cases (`P12-UI-01` … `P19-A-17`) plus a cross-phase MVP journey suite.
 
 ---
 

@@ -96,6 +96,9 @@ function seedProcess(
     reviewFrequency: input.reviewFrequency ?? "annually",
     executionSchedule: input.executionSchedule ?? defaultExecutionSchedule,
     creationSource: input.creationSource ?? "manual",
+    participants: [],
+    relatedDocuments: [],
+    acknowledgementRequired: false,
     status: input.status,
     currentVersionId: versionId,
     createdBy: input.createdBy,
@@ -216,6 +219,9 @@ export function buildGisRichProcessStore() {
     reviewFrequency: "quarterly",
     executionSchedule: { kind: "daily", timezone: "Africa/Accra" },
     creationSource: "manual",
+    participants: [],
+    relatedDocuments: [],
+    acknowledgementRequired: false,
     status: "active",
     currentVersionId: attendanceV2Id,
     createdBy: "user-gis-owner",
@@ -247,6 +253,10 @@ export function buildGisRichProcessStore() {
     createdAt: enrolmentNow,
     approvedBy: "user-gis-head",
     approvedAt: enrolmentNow,
+    effectiveDate: "2026-05-26",
+    reviewDueDate: "2027-05-26",
+    publishedAt: enrolmentNow,
+    publishedBy: "user-gis-owner",
   };
 
   const enrolmentV1Id = "proc-gis-enrolment-v1";
@@ -272,6 +282,9 @@ export function buildGisRichProcessStore() {
     reviewFrequency: "annually",
     executionSchedule: { kind: "ad_hoc" },
     creationSource: "manual",
+    participants: [],
+    relatedDocuments: [],
+    acknowledgementRequired: true,
     status: "active",
     currentVersionId: enrolmentV3Id,
     createdBy: "user-gis-owner",
@@ -316,6 +329,10 @@ export function buildGisRichProcessStore() {
     createdAt: enrolmentNow,
     approvedBy: "user-gis-head",
     approvedAt: enrolmentNow,
+    effectiveDate: "2026-05-26",
+    reviewDueDate: "2027-05-26",
+    publishedAt: enrolmentNow,
+    publishedBy: "user-gis-owner",
   };
 
   const fees = seedProcess(tenantId, gisScaffold[2]!, {
@@ -519,5 +536,5 @@ export function buildGisRichProcessStore() {
     comment: "Ready for department head review.",
   });
 
-  return { processes, versions, steps, people };
+  return { processes, versions, steps, people, documents: new Map() };
 }

@@ -6,6 +6,7 @@ import { FileText } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { PrimaryButton } from "@/components/primary-button";
 import { EmptyState } from "@/components/empty-state";
+import { LegalDisclaimer } from "@/components/legal-disclaimer";
 import { ListTableSkeleton } from "@/components/list-table-skeleton";
 import {
   downloadAuditPackFile,
@@ -138,7 +139,7 @@ export default function AuditPacksPage() {
     <>
       <PageHeader
         title="Audit Packs"
-        description="Generate scoped PDF audit packs for compliance reviews and external auditors."
+        description="Generate scoped PDF audit packs for standards alignment reviews and external auditors."
         action={
           <Link href="/audit">
             <button
@@ -150,6 +151,8 @@ export default function AuditPacksPage() {
           </Link>
         }
       />
+
+      <LegalDisclaimer className="mb-6" />
 
       <div className="mb-6 grid gap-4 rounded-lg border border-border bg-white p-5 md:grid-cols-2">
         <label className="text-sm">

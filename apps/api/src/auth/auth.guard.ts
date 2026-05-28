@@ -54,6 +54,26 @@ export class AuthGuard implements CanActivate {
     }
 
     const token = authorization.slice("Bearer ".length);
+
+    if (
+      token.startsWith("demo:") &&
+      process.env.ALLOW_DEMO_BEARER === "true"
+    ) {
+      try {
+        request.user = resolveDemoUser(token);
+        return true;
+      } catch {
+        throw new UnauthorizedException({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Invalid demo bearer token.",
+            status: 401,
+          },
+        });
+      }
+    }
+
     const supabase = getSupabaseAdminClient();
 
     if (!supabase) {

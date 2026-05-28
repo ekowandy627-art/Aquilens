@@ -1,10 +1,17 @@
-export type ProcessStatus = "draft" | "under_review" | "active" | "retired";
-export type VersionStatus =
+export type ProcessStatus =
   | "draft"
   | "under_review"
   | "active"
+  | "retired"
+  | "archived";
+export type VersionStatus =
+  | "draft"
+  | "under_review"
+  | "approved"
+  | "active"
   | "superseded"
-  | "rejected";
+  | "rejected"
+  | "archived";
 
 export class ProcessLifecycleError extends Error {
   constructor(
@@ -42,6 +49,24 @@ export function assertCanReject(processStatus: ProcessStatus, versionStatus: Ver
   }
 }
 
+export function assertCanPublish(versionStatus: VersionStatus) {
+  if (versionStatus !== "approved" && versionStatus !== "active") {
+    throw new ProcessLifecycleError(
+      "INVALID_STATE",
+      "Only approved versions can be published.",
+    );
+  }
+}
+
+export function assertCanArchive(processStatus: ProcessStatus) {
+  if (processStatus !== "active" && processStatus !== "retired") {
+    throw new ProcessLifecycleError(
+      "INVALID_STATE",
+      "Only active or retired processes can be archived.",
+    );
+  }
+}
+
 export function assertCanCreateVersion(processStatus: ProcessStatus) {
   if (processStatus !== "active") {
     throw new ProcessLifecycleError(
@@ -52,7 +77,7 @@ export function assertCanCreateVersion(processStatus: ProcessStatus) {
 }
 
 export function assertProcessEditable(processStatus: ProcessStatus, versionStatus: VersionStatus) {
-  if (processStatus === "active" || processStatus === "retired") {
+  if (processStatus === "active" || processStatus === "retired" || processStatus === "archived") {
     throw new ProcessLifecycleError(
       "PROCESS_LOCKED",
       "Active processes cannot be edited directly. Create a new version instead.",
@@ -73,4 +98,8 @@ export function canEditProcess(processStatus: ProcessStatus, versionStatus: Vers
   } catch {
     return false;
   }
+}
+
+export function canPublishVersion(versionStatus: VersionStatus) {
+  return versionStatus === "approved";
 }

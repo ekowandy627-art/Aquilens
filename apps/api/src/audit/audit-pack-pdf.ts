@@ -1,4 +1,5 @@
 import PDFDocument from "pdfkit";
+import { LEGAL_DISCLAIMER, LEGAL_DISCLAIMER_FOOTER } from "../lib/legal";
 import { processDemoStore } from "../processes/process-demo.store";
 import { approvalDemoStore } from "../approvals/approval-demo.store";
 import { auditDemoStore } from "./audit-demo.store";
@@ -13,11 +14,14 @@ type PackContext = {
 export function generateAuditPackPdf(job: AuditPackJob, context: PackContext): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50, size: "A4", compress: false });
+    doc.info.Subject = "Aquilens audit pack — includes legal disclaimer";
+    doc.info.Creator = "Aquilens";
     const chunks: Buffer[] = [];
 
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+    doc.on("pageAdded", () => writePdfPageFooter(doc));
 
     // Section 1: Cover page
     doc.fontSize(22).text("Aquilens Audit Pack", { align: "center" });
@@ -125,6 +129,10 @@ export function generateAuditPackPdf(job: AuditPackJob, context: PackContext): P
         `${formatDate(event.timestamp)} | ${event.actorName ?? "—"} | ${event.eventType} | ${event.action}`,
       );
     }
+    doc.addPage();
+
+    writeSectionTitle(doc, "Legal notice");
+    doc.fontSize(9).text(LEGAL_DISCLAIMER, { align: "left" });
 
     doc.end();
   });
@@ -132,6 +140,15 @@ export function generateAuditPackPdf(job: AuditPackJob, context: PackContext): P
 
 export function isValidAuditPackPdf(buffer: Buffer) {
   return buffer.length > 3000 && buffer.subarray(0, 5).toString() === "%PDF-";
+}
+
+/** PDF body text is hex-encoded in streams; detect legal section + footer markers. */
+export function auditPackPdfIncludesLegalNotice(buffer: Buffer) {
+  const raw = buffer.toString("latin1");
+  return (
+    raw.includes("4c6567616c206e6f74696365") || // "Legal notice"
+    raw.includes("646f6573206e6f742063657274696679") // "does not certify"
+  );
 }
 
 /** @deprecated Use isValidAuditPackPdf; PDF text is not plain-searchable in buffers. */
@@ -142,6 +159,23 @@ export function pdfContainsAllSections(buffer: Buffer) {
 function writeSectionTitle(doc: InstanceType<typeof PDFDocument>, title: string) {
   doc.fontSize(14).text(title, { underline: true });
   doc.moveDown(0.5);
+}
+
+function writePdfPageFooter(doc: InstanceType<typeof PDFDocument>) {
+  const page = doc.page;
+  if (!page) {
+    return;
+  }
+  const y = page.height - page.margins.bottom - 24;
+  doc
+    .fontSize(7)
+    .fillColor("#666")
+    .text(LEGAL_DISCLAIMER_FOOTER, page.margins.left, y, {
+      width: page.width - page.margins.left - page.margins.right,
+      align: "center",
+      lineBreak: true,
+    });
+  doc.fillColor("#000");
 }
 
 function formatDate(value?: string) {

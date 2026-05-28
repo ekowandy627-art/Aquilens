@@ -1,14 +1,23 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { AcknowledgementsService } from "../acknowledgements/acknowledgements.service";
 import { AgentsService } from "../agents/agents.service";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../auth/auth.types";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
+import { getSupabaseForUser } from "../demo/demo-data-mode";
+import { guidanceDemoStore } from "../standards/guidance-demo.store";
 import { generateProcessCode } from "./process-code";
 import type { ExecutionSchedule } from "./execution-schedule";
 import {
+  assertCanArchive,
+  assertCanPublish,
   canEditProcess,
+  canPublishVersion,
   assertProcessEditable,
+  ProcessLifecycleError,
 } from "../approvals/process-lifecycle";
+import { assertValidParticipants } from "./process-participants";
+import { isReviewOverdue } from "./review-schedule";
 import {
   assertProcessEdit,
   assertProcessPeopleManagement,
@@ -24,6 +33,8 @@ import {
   type CreateProcessInput,
   type CreateStepInput,
   type ProcessListFilters,
+  type ProcessRecord,
+  type ProcessVersionRecord,
   type UpdateProcessInput,
 } from "./process-demo.store";
 
@@ -38,10 +49,12 @@ export class ProcessesService {
 
   constructor(
     @Inject(AgentsService) private readonly agentsService: AgentsService,
+    @Inject(AcknowledgementsService)
+    private readonly acknowledgementsService: AcknowledgementsService,
   ) {}
 
   async list(user: AuthUser, filters: ProcessListFilters) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       return this.demo
         .listProcesses(user.tenantId, filters)
@@ -116,7 +129,7 @@ export class ProcessesService {
   }
 
   async getDetail(user: AuthUser, processId: string) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const process = this.demo.getProcess(user.tenantId, processId);
       if (!process) {
@@ -128,30 +141,39 @@ export class ProcessesService {
       const access = resolveProcessAccess(user, people, process.createdBy);
       assertProcessView(access);
       const lifecycle = this.buildLifecycle(
+        user,
         process.status,
         version?.status ?? "draft",
         access,
       );
+      lifecycle.flags.reviewOverdue = version?.reviewDueDate
+        ? isReviewOverdue(version.reviewDueDate)
+        : false;
+
+      const linkedGuidance = guidanceDemoStore
+        .listProcessGuidance(user.tenantId, processId)
+        .map((link) => {
+          const pack = guidanceDemoStore.getPackById(link.packId);
+          return {
+            packId: link.packId,
+            packSlug: pack?.slug,
+            packName: pack?.name,
+            requirementId: link.requirementId,
+          };
+        });
 
       return {
         ...this.toDetail(process),
         access: lifecycle.access,
         lifecycle: lifecycle.flags,
-        currentVersion: version
-          ? {
-              id: version.id,
-              versionNumber: version.versionNumber,
-              status: version.status,
-              changeSummary: version.changeSummary,
-              createdAt: version.createdAt,
-            }
-          : null,
+        currentVersion: version ? this.toVersionSummary(version) : null,
         steps: await this.enrichStepsWithAgents(user.tenantId, steps),
         people: people.map((person) => ({
           id: person.id,
           userId: person.userId,
           role: person.role,
         })),
+        linkedGuidance,
       };
     }
 
@@ -176,7 +198,9 @@ export class ProcessesService {
       ? await Promise.all([
           supabase
             .from("process_versions")
-            .select("id, version_number, status, change_summary, created_at")
+            .select(
+              "id, version_number, status, change_summary, created_at, approved_by, approved_at, effective_date, review_due_date, published_at, published_by, archived_at",
+            )
             .eq("id", versionId)
             .maybeSingle(),
           supabase
@@ -203,15 +227,14 @@ export class ProcessesService {
     );
     assertProcessView(access);
     const lifecycle = this.buildLifecycle(
-      process.status as "draft" | "under_review" | "active" | "retired",
-      (versionResult.data?.status ?? "draft") as
-        | "draft"
-        | "under_review"
-        | "active"
-        | "superseded"
-        | "rejected",
+      user,
+      process.status as ProcessRecord["status"],
+      (versionResult.data?.status ?? "draft") as ProcessVersionRecord["status"],
       access,
     );
+    lifecycle.flags.reviewOverdue = versionResult.data?.review_due_date
+      ? isReviewOverdue(versionResult.data.review_due_date as string)
+      : false;
 
     return {
       id: process.id,
@@ -234,6 +257,13 @@ export class ProcessesService {
         kind: "ad_hoc",
       }) as ExecutionSchedule,
       regulatoryReference: process.regulatory_reference ?? undefined,
+      triggerDescription: (process.trigger_description as string) ?? undefined,
+      participants: (process.participants as ProcessRecord["participants"]) ?? [],
+      inputs: (process.inputs as string) ?? undefined,
+      outputs: (process.outputs as string) ?? undefined,
+      exceptions: (process.exceptions as string) ?? undefined,
+      relatedDocuments: (process.related_documents as unknown[]) ?? [],
+      acknowledgementRequired: Boolean(process.acknowledgement_required),
       status: process.status,
       functionName:
         (process.tenant_functions as { name?: string } | null)?.name ?? undefined,
@@ -245,13 +275,20 @@ export class ProcessesService {
       access: lifecycle.access,
       lifecycle: lifecycle.flags,
       currentVersion: versionResult.data
-        ? {
-            id: versionResult.data.id,
-            versionNumber: versionResult.data.version_number,
-            status: versionResult.data.status,
-            changeSummary: versionResult.data.change_summary ?? undefined,
-            createdAt: versionResult.data.created_at,
-          }
+        ? this.toVersionSummary({
+            id: versionResult.data.id as string,
+            versionNumber: versionResult.data.version_number as number,
+            status: versionResult.data.status as string,
+            changeSummary: (versionResult.data.change_summary as string) ?? undefined,
+            createdAt: versionResult.data.created_at as string,
+            approvedBy: (versionResult.data.approved_by as string) ?? undefined,
+            approvedAt: (versionResult.data.approved_at as string) ?? undefined,
+            effectiveDate: (versionResult.data.effective_date as string) ?? undefined,
+            reviewDueDate: (versionResult.data.review_due_date as string) ?? undefined,
+            publishedAt: (versionResult.data.published_at as string) ?? undefined,
+            publishedBy: (versionResult.data.published_by as string) ?? undefined,
+            archivedAt: (versionResult.data.archived_at as string) ?? undefined,
+          })
         : null,
       steps: await this.enrichStepsWithAgents(
         user.tenantId,
@@ -282,7 +319,7 @@ export class ProcessesService {
   }
 
   async create(user: AuthUser, input: CreateProcessInput) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     const scaffold = await this.lookupScaffold(user, input.functionId, input.processAreaId);
 
     if (!supabase) {
@@ -364,7 +401,7 @@ export class ProcessesService {
   async update(user: AuthUser, processId: string, patch: UpdateProcessInput) {
     await this.requireEditAccess(user, processId);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const updated = this.demo.updateProcess(user.tenantId, processId, patch);
       if (!updated) {
@@ -393,6 +430,19 @@ export class ProcessesService {
       payload.execution_schedule = patch.executionSchedule;
     if (patch.regulatoryReference !== undefined)
       payload.regulatory_reference = patch.regulatoryReference;
+    if (patch.triggerDescription !== undefined)
+      payload.trigger_description = patch.triggerDescription;
+    if (patch.participants !== undefined) {
+      assertValidParticipants(patch.participants);
+      payload.participants = patch.participants;
+    }
+    if (patch.inputs !== undefined) payload.inputs = patch.inputs;
+    if (patch.outputs !== undefined) payload.outputs = patch.outputs;
+    if (patch.exceptions !== undefined) payload.exceptions = patch.exceptions;
+    if (patch.relatedDocuments !== undefined)
+      payload.related_documents = patch.relatedDocuments;
+    if (patch.acknowledgementRequired !== undefined)
+      payload.acknowledgement_required = patch.acknowledgementRequired;
     if (patch.status !== undefined) payload.status = patch.status;
 
     const { error } = await supabase
@@ -413,6 +463,251 @@ export class ProcessesService {
     return this.update(user, processId, { status: "retired" });
   }
 
+  async publish(
+    user: AuthUser,
+    processId: string,
+    input: {
+      effectiveDate: string;
+      reviewDueDate?: string;
+      acknowledgementRequired?: boolean;
+      acknowledgementDueDate?: string;
+    },
+  ) {
+    if (!input.effectiveDate?.trim()) {
+      throw new ProcessLifecycleError(
+        "VALIDATION_ERROR",
+        "Effective date is required to publish.",
+      );
+    }
+
+    const context = await this.loadProcessAccessContext(user, processId);
+    if (!context) {
+      throw new ProcessAccessError("NOT_FOUND", "Process not found.");
+    }
+
+    assertCanPublish(context.versionStatus);
+
+    const supabase = getSupabaseForUser(user);
+    if (!supabase) {
+      if (input.acknowledgementRequired !== undefined) {
+        this.demo.updateProcess(user.tenantId, processId, {
+          acknowledgementRequired: input.acknowledgementRequired,
+        });
+      }
+
+      const result = this.demo.publishVersion(user.tenantId, processId, user.id, {
+        effectiveDate: input.effectiveDate,
+        reviewDueDate: input.reviewDueDate,
+      });
+      if (!result) {
+        return null;
+      }
+
+      const publishedProcess = this.demo.getProcess(user.tenantId, processId);
+      if (publishedProcess?.acknowledgementRequired) {
+        await this.acknowledgementsService.createCampaignFromPublish(
+          user,
+          processId,
+          result.version.id,
+          { dueDate: input.acknowledgementDueDate },
+        );
+      }
+
+      return {
+        processId,
+        status: "active",
+        versionId: result.version.id,
+        effectiveDate: result.version.effectiveDate,
+        reviewDueDate: result.version.reviewDueDate,
+        publishedAt: result.version.publishedAt,
+      };
+    }
+
+    const process = await this.requireProcess(user, processId);
+    const now = new Date().toISOString();
+    const processPatch: Record<string, unknown> = {
+      status: "active",
+      updated_at: now,
+    };
+    if (input.acknowledgementRequired !== undefined) {
+      processPatch.acknowledgement_required = input.acknowledgementRequired;
+    }
+
+    await supabase
+      .from("processes")
+      .update(processPatch)
+      .eq("tenant_id", user.tenantId)
+      .eq("id", processId);
+
+    await supabase
+      .from("process_versions")
+      .update({
+        status: "active",
+        effective_date: input.effectiveDate,
+        review_due_date: input.reviewDueDate ?? null,
+        published_at: now,
+        published_by: user.id,
+      })
+      .eq("id", process.currentVersionId);
+
+    const { data: publishedProcess } = await supabase
+      .from("processes")
+      .select("acknowledgement_required")
+      .eq("tenant_id", user.tenantId)
+      .eq("id", processId)
+      .maybeSingle();
+
+    if (publishedProcess?.acknowledgement_required) {
+      await this.acknowledgementsService.createCampaignFromPublish(
+        user,
+        processId,
+        process.currentVersionId,
+        { dueDate: input.acknowledgementDueDate },
+      );
+    }
+
+    return {
+      processId,
+      status: "active",
+      versionId: process.currentVersionId,
+      effectiveDate: input.effectiveDate,
+      reviewDueDate: input.reviewDueDate,
+      publishedAt: now,
+    };
+  }
+
+  async archive(user: AuthUser, processId: string) {
+    const process = await this.requireProcess(user, processId);
+    assertCanArchive(process.status as "draft" | "under_review" | "active" | "retired" | "archived");
+
+    const supabase = getSupabaseForUser(user);
+    if (!supabase) {
+      const archived = this.demo.archiveProcess(user.tenantId, processId);
+      return archived ? { processId, status: archived.status } : null;
+    }
+
+    const now = new Date().toISOString();
+    await supabase
+      .from("processes")
+      .update({ status: "archived", updated_at: now })
+      .eq("tenant_id", user.tenantId)
+      .eq("id", processId);
+
+    if (process.currentVersionId) {
+      await supabase
+        .from("process_versions")
+        .update({ status: "archived", archived_at: now })
+        .eq("id", process.currentVersionId);
+    }
+
+    return { processId, status: "archived" };
+  }
+
+  async listDocuments(user: AuthUser, processId: string) {
+    await this.requireProcess(user, processId);
+
+    const supabase = getSupabaseForUser(user);
+    if (!supabase) {
+      return this.demo.listDocuments(user.tenantId, processId).map((document) =>
+        this.toDocument(document),
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("process_documents")
+      .select("*")
+      .eq("tenant_id", user.tenantId)
+      .eq("process_id", processId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((row) => this.toDocumentFromRow(row));
+  }
+
+  async addDocument(
+    user: AuthUser,
+    processId: string,
+    file: { originalname: string; mimetype?: string; size: number; buffer: Buffer },
+  ) {
+    const process = await this.requireProcess(user, processId);
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      throw new ProcessLifecycleError(
+        "FILE_TOO_LARGE",
+        "Document exceeds the 5MB upload limit.",
+      );
+    }
+
+    const supabase = getSupabaseForUser(user);
+    if (!supabase) {
+      const storagePath = `demo/${processId}/${randomUUID()}-${file.originalname}`;
+      const document = this.demo.addDocument(user.tenantId, processId, {
+        filename: file.originalname,
+        storagePath,
+        mimeType: file.mimetype,
+        byteSize: file.size,
+        uploadedBy: user.id,
+        processVersionId: process.currentVersionId,
+      });
+      return this.toDocument(document);
+    }
+
+    const documentId = randomUUID();
+    const storagePath = `${user.tenantId}/${processId}/${documentId}-${file.originalname}`;
+    const { error: uploadError } = await supabase.storage
+      .from("process-documents")
+      .upload(storagePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      throw new Error(uploadError.message);
+    }
+
+    const { data, error } = await supabase
+      .from("process_documents")
+      .insert({
+        id: documentId,
+        tenant_id: user.tenantId,
+        process_id: processId,
+        process_version_id: process.currentVersionId,
+        filename: file.originalname,
+        storage_path: storagePath,
+        mime_type: file.mimetype,
+        byte_size: file.size,
+        uploaded_by: user.id,
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return this.toDocumentFromRow(data);
+  }
+
+  listReviewOverdue(user: AuthUser) {
+    const supabase = getSupabaseForUser(user);
+    if (!supabase) {
+      return this.demo
+        .listProcesses(user.tenantId)
+        .filter((process) => {
+          const version = this.demo.getVersion(process.currentVersionId);
+          return version?.reviewDueDate
+            ? isReviewOverdue(version.reviewDueDate)
+            : false;
+        })
+        .map((process) => this.toListItem(process));
+    }
+
+    return [];
+  }
+
   async addStep(
     user: AuthUser,
     processId: string,
@@ -421,7 +716,7 @@ export class ProcessesService {
   ) {
     await this.requireEditAccess(user, processId);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       await this.assertVersionAccess(user, processId, versionId);
       const step = this.demo.addStep(user.tenantId, versionId, input);
@@ -477,7 +772,7 @@ export class ProcessesService {
   ) {
     await this.requireEditAccess(user, processId);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       await this.assertVersionAccess(user, processId, versionId);
       const updated = this.demo.updateStep(stepId, {
@@ -549,7 +844,7 @@ export class ProcessesService {
   ) {
     await this.requireEditAccess(user, processId);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       await this.assertVersionAccess(user, processId, versionId);
       this.demo.deleteStep(stepId);
@@ -579,7 +874,7 @@ export class ProcessesService {
   ) {
     await this.requireEditAccess(user, processId);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       await this.assertVersionAccess(user, processId, versionId);
       const steps = this.demo.reorderSteps(versionId, orderedIds);
@@ -639,7 +934,7 @@ export class ProcessesService {
     );
     assertProcessPeopleManagement(user, access);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       await this.assertVersionAccess(user, processId, versionId);
       return this.demo.replacePeople(versionId, entries);
@@ -699,6 +994,52 @@ export class ProcessesService {
     return resolveProcessAccess(user, resolvedPeople, createdBy).canView;
   }
 
+  private async requireProcess(user: AuthUser, processId: string) {
+    const supabase = getSupabaseForUser(user);
+    if (!supabase) {
+      const process = this.demo.getProcess(user.tenantId, processId);
+      if (!process) {
+        throw new ProcessAccessError("NOT_FOUND", "Process not found.");
+      }
+      const people = this.demo.listPeople(process.currentVersionId);
+      assertProcessView(resolveProcessAccess(user, people, process.createdBy));
+      return process;
+    }
+
+    const { data: process, error } = await supabase
+      .from("processes")
+      .select("id, status, created_by, current_version_id")
+      .eq("tenant_id", user.tenantId)
+      .eq("id", processId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    if (!process) {
+      throw new ProcessAccessError("NOT_FOUND", "Process not found.");
+    }
+
+    const people = process.current_version_id
+      ? await this.loadPeople(process.current_version_id as string, supabase)
+      : [];
+    assertProcessView(
+      resolveProcessAccess(
+        user,
+        people,
+        process.created_by as string | undefined,
+      ),
+    );
+
+    return {
+      id: process.id as string,
+      tenantId: user.tenantId,
+      status: process.status as ProcessRecord["status"],
+      currentVersionId: process.current_version_id as string,
+      createdBy: process.created_by as string | undefined,
+    };
+  }
+
   private async requireEditAccess(user: AuthUser, processId: string) {
     const detail = await this.loadProcessAccessContext(user, processId);
     if (!detail) {
@@ -718,7 +1059,7 @@ export class ProcessesService {
   }
 
   private async loadProcessAccessContext(user: AuthUser, processId: string) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const process = this.demo.getProcess(user.tenantId, processId);
       if (!process) {
@@ -768,16 +1109,24 @@ export class ProcessesService {
   }
 
   private buildLifecycle(
-    processStatus: "draft" | "under_review" | "active" | "retired",
+    user: AuthUser,
+    processStatus: "draft" | "under_review" | "active" | "retired" | "archived",
     versionStatus:
       | "draft"
       | "under_review"
+      | "approved"
       | "active"
       | "superseded"
-      | "rejected",
+      | "rejected"
+      | "archived",
     access: ReturnType<typeof resolveProcessAccess>,
   ) {
     const editable = access.canEdit && canEditProcess(processStatus, versionStatus);
+    const canPublish =
+      (user.permissions.includes("*") ||
+        user.permissions.includes("processes:publish")) &&
+      canPublishVersion(versionStatus);
+
     return {
       access: { ...access, canEdit: editable },
       flags: {
@@ -785,9 +1134,14 @@ export class ProcessesService {
           editable &&
           processStatus === "draft" &&
           versionStatus === "draft",
+        canPublish,
         canCreateVersion:
           access.canEdit && processStatus === "active",
         canStartWorkflow: processStatus === "active",
+        canArchive:
+          access.canEdit &&
+          (processStatus === "active" || processStatus === "retired"),
+        reviewOverdue: false,
       },
     };
   }
@@ -812,7 +1166,7 @@ export class ProcessesService {
     functionId: string,
     areaId: string,
   ): Promise<ScaffoldLookup> {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const names = demoScaffoldNames(functionId, areaId);
       return names;
@@ -951,6 +1305,13 @@ export class ProcessesService {
     reviewFrequency: string;
     executionSchedule?: ExecutionSchedule;
     regulatoryReference?: string;
+    triggerDescription?: string;
+    participants?: Array<{ role: string; userId?: string }>;
+    inputs?: string;
+    outputs?: string;
+    exceptions?: string;
+    relatedDocuments?: unknown[];
+    acknowledgementRequired?: boolean;
     status: string;
     functionName?: string;
     processAreaName?: string;
@@ -976,11 +1337,81 @@ export class ProcessesService {
       reviewFrequency: process.reviewFrequency,
       executionSchedule: process.executionSchedule ?? { kind: "ad_hoc" },
       regulatoryReference: process.regulatoryReference,
+      triggerDescription: process.triggerDescription,
+      participants: process.participants ?? [],
+      inputs: process.inputs,
+      outputs: process.outputs,
+      exceptions: process.exceptions,
+      relatedDocuments: process.relatedDocuments ?? [],
+      acknowledgementRequired: process.acknowledgementRequired ?? false,
       status: process.status,
       functionName: process.functionName,
       processAreaName: process.processAreaName,
       createdAt: process.createdAt,
       updatedAt: process.updatedAt,
+    };
+  }
+
+  private toVersionSummary(version: {
+    id: string;
+    versionNumber: number;
+    status: string;
+    changeSummary?: string;
+    createdAt: string;
+    approvedBy?: string;
+    approvedAt?: string;
+    effectiveDate?: string;
+    reviewDueDate?: string;
+    publishedAt?: string;
+    publishedBy?: string;
+    archivedAt?: string;
+  }) {
+    return {
+      id: version.id,
+      versionNumber: version.versionNumber,
+      status: version.status,
+      changeSummary: version.changeSummary,
+      createdAt: version.createdAt,
+      approvedBy: version.approvedBy,
+      approvedAt: version.approvedAt,
+      effectiveDate: version.effectiveDate,
+      reviewDueDate: version.reviewDueDate,
+      publishedAt: version.publishedAt,
+      publishedBy: version.publishedBy,
+      archivedAt: version.archivedAt,
+      reviewOverdue: isReviewOverdue(version.reviewDueDate),
+    };
+  }
+
+  private toDocument(document: {
+    id: string;
+    filename: string;
+    storagePath: string;
+    mimeType?: string;
+    byteSize?: number;
+    uploadedBy?: string;
+    createdAt: string;
+  }) {
+    return {
+      id: document.id,
+      filename: document.filename,
+      storagePath: document.storagePath,
+      mimeType: document.mimeType,
+      byteSize: document.byteSize,
+      uploadedBy: document.uploadedBy,
+      createdAt: document.createdAt,
+    };
+  }
+
+  private toDocumentFromRow(row: Record<string, unknown>) {
+    return {
+      id: row.id as string,
+      filename: row.filename as string,
+      storagePath: row.storage_path as string,
+      mimeType: (row.mime_type as string) ?? undefined,
+      byteSize: (row.byte_size as number) ?? undefined,
+      uploadedBy: (row.uploaded_by as string) ?? undefined,
+      createdAt: row.created_at as string,
     };
   }
 

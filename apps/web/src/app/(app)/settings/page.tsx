@@ -16,6 +16,12 @@ const tabs = [
     icon: GitBranch,
   },
   {
+    label: "Standards",
+    description: "Guidance pack selections and alignment posture.",
+    href: "/settings/standards",
+    icon: Shield,
+  },
+  {
     label: "Users",
     description: "Invites, status, and tenant members.",
     href: "/settings/users",

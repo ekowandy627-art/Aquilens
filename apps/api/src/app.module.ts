@@ -11,12 +11,17 @@ import { NotificationsModule } from "./notifications/notifications.module";
 import { ProcessesModule } from "./processes/processes.module";
 import { SopModule } from "./sop/sop.module";
 import { TenantsController } from "./tenants/tenants.controller";
+import { DemoController } from "./demo/demo.controller";
+import { StandardsModule } from "./standards/standards.module";
+import { AcknowledgementsModule } from "./acknowledgements/acknowledgements.module";
 
 @Module({
   imports: [
     AuthModule,
     AuditModule,
     AdminModule,
+    StandardsModule,
+    AcknowledgementsModule,
     ProcessesModule,
     SopModule,
     ApprovalsModule,
@@ -25,6 +30,6 @@ import { TenantsController } from "./tenants/tenants.controller";
     NotificationsModule,
     AgentsModule,
   ],
-  controllers: [AppController, TenantsController],
+  controllers: [AppController, TenantsController, DemoController],
 })
 export class AppModule {}

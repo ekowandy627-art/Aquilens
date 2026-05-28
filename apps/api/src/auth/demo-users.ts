@@ -21,6 +21,10 @@ const demoUsers: Record<string, AuthUser> = {
       "agents:edit",
       "audit:read",
       "audit_packs:generate",
+      "standards:read",
+      "standards:manage",
+      "tenant_scaffold:read",
+      "acknowledgements:read",
     ],
   },
   "user-gis-head": {
@@ -34,6 +38,8 @@ const demoUsers: Record<string, AuthUser> = {
       "workflows:read",
       "agents:read",
       "agents:edit",
+      "tenant_scaffold:read",
+      "acknowledgements:read",
     ],
   },
   "user-gis-owner": {
@@ -45,7 +51,14 @@ const demoUsers: Record<string, AuthUser> = {
       "processes:create",
       "processes:read",
       "processes:edit",
+      "processes:publish",
+      "standards:read",
+      "standards:manage",
+      "tenant_scaffold:read",
+      "tenant_scaffold:manage",
       "workflows:read",
+      "acknowledgements:read",
+      "acknowledgements:manage",
     ],
   },
   "user-gis-staff": {
@@ -53,7 +66,13 @@ const demoUsers: Record<string, AuthUser> = {
     tenantId: "tenant-gis",
     email: "gis-staff@aquilens.test",
     roles: ["Staff"],
-    permissions: ["processes:read", "workflows:read", "workflows:complete"],
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "workflows:complete",
+      "tenant_scaffold:read",
+      "acknowledgements:complete",
+    ],
   },
   "user-hospital-admin": {
     id: "user-hospital-admin",
@@ -67,7 +86,12 @@ const demoUsers: Record<string, AuthUser> = {
     tenantId: "tenant-hospital",
     email: "hospital-staff@aquilens.test",
     roles: ["Staff"],
-    permissions: ["processes:read", "workflows:read", "workflows:complete"],
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "workflows:complete",
+      "acknowledgements:complete",
+    ],
   },
 };
 
@@ -133,4 +157,12 @@ export function listDemoUsers(tenantId: string) {
       email: profile.email,
       status: "active",
     }));
+}
+
+export function getDemoUserProfile(userId: string) {
+  const profile = demoUserProfiles[userId];
+  if (!profile) {
+    return null;
+  }
+  return { id: userId, ...profile };
 }

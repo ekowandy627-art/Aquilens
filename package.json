@@ -16,8 +16,11 @@
     "lint": "npm run lint:web && npm run lint:api",
     "lint:web": "npm --prefix apps/web run lint",
     "lint:api": "npm --prefix apps/api run lint",
-    "test": "npm run test:api",
+    "test": "npm run test:shared && npm run test:api && npm run check:product-language",
+    "test:shared": "tsx --test packages/shared/src/*.test.ts",
     "test:api": "npm --prefix apps/api run test",
+    "test:e2e": "npm --prefix apps/web run test:e2e",
+    "check:product-language": "node scripts/check-product-language.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "seed:supabase-auth": "node scripts/seed-supabase-auth.mjs"
   }

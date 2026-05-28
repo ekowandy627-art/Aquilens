@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../auth/auth.types";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
+import { getSupabaseForUser } from "../demo/demo-data-mode";
 import { approvalDemoStore } from "./approval-demo.store";
 import {
   assertCanApprove,
@@ -22,7 +23,7 @@ export { ProcessLifecycleError };
 @Injectable()
 export class ApprovalsService {
   async listPending(user: AuthUser) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const items = approvalDemoStore.listForApprover(
         user.tenantId,
@@ -48,7 +49,7 @@ export class ApprovalsService {
   }
 
   async getApproval(user: AuthUser, approvalId: string) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const item = approvalDemoStore.get(approvalId);
       if (!item || item.tenantId !== user.tenantId) {
@@ -85,7 +86,7 @@ export class ApprovalsService {
   }
 
   async pendingCount(user: AuthUser) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       return approvalDemoStore.pendingCountForApprover(user.tenantId, user.id);
     }
@@ -105,7 +106,7 @@ export class ApprovalsService {
   }
 
   async listProcessApprovals(user: AuthUser, processId: string) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       return approvalDemoStore
         .listForProcess(processId)
@@ -131,7 +132,7 @@ export class ApprovalsService {
     assertProcessEdit(context.access);
     assertCanSubmit(context.processStatus, context.versionStatus);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const result = processDemoStore.submitForApproval(
         user.tenantId,
@@ -188,7 +189,7 @@ export class ApprovalsService {
     const context = await this.loadProcessContext(user, processId);
     assertCanApprove(context.processStatus, context.versionStatus);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const result = processDemoStore.approveVersion(
         user.tenantId,
@@ -202,7 +203,7 @@ export class ApprovalsService {
           "No pending approval found for you.",
         );
       }
-      return { processId, status: "active", approvalId: result.approvalId };
+      return { processId, status: "approved", approvalId: result.approvalId };
     }
 
     const pending = await this.findPendingApproval(
@@ -217,14 +218,14 @@ export class ApprovalsService {
     const now = new Date().toISOString();
     await supabase
       .from("processes")
-      .update({ status: "active", updated_at: now })
+      .update({ status: "under_review", updated_at: now })
       .eq("tenant_id", user.tenantId)
       .eq("id", processId);
 
     await supabase
       .from("process_versions")
       .update({
-        status: "active",
+        status: "approved",
         approved_by: user.id,
         approved_at: now,
       })
@@ -239,7 +240,7 @@ export class ApprovalsService {
       })
       .eq("id", pending.id);
 
-    return { processId, status: "active", approvalId: pending.id };
+    return { processId, status: "approved", approvalId: pending.id };
   }
 
   async reject(
@@ -259,7 +260,7 @@ export class ApprovalsService {
     const context = await this.loadProcessContext(user, processId);
     assertCanReject(context.processStatus, context.versionStatus);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const result = processDemoStore.rejectVersion(
         user.tenantId,
@@ -314,7 +315,7 @@ export class ApprovalsService {
     assertProcessEdit(context.access);
     assertCanCreateVersion(context.processStatus);
 
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const result = processDemoStore.createNewVersion(
         user.tenantId,
@@ -415,7 +416,7 @@ export class ApprovalsService {
   }
 
   async listVersions(user: AuthUser, processId: string) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const process = processDemoStore.getProcess(user.tenantId, processId);
       if (!process) {
@@ -432,6 +433,11 @@ export class ApprovalsService {
         rejectedBy: version.rejectedBy,
         rejectedAt: version.rejectedAt,
         rejectionComment: version.rejectionComment,
+        effectiveDate: version.effectiveDate,
+        reviewDueDate: version.reviewDueDate,
+        publishedAt: version.publishedAt,
+        publishedBy: version.publishedBy,
+        archivedAt: version.archivedAt,
         isCurrent: version.id === process.currentVersionId,
       }));
     }
@@ -466,6 +472,11 @@ export class ApprovalsService {
       createdAt: version.created_at,
       approvedBy: version.approved_by ?? undefined,
       approvedAt: version.approved_at ?? undefined,
+      effectiveDate: version.effective_date ?? undefined,
+      reviewDueDate: version.review_due_date ?? undefined,
+      publishedAt: version.published_at ?? undefined,
+      publishedBy: version.published_by ?? undefined,
+      archivedAt: version.archived_at ?? undefined,
       isCurrent: version.id === process.current_version_id,
     }));
   }
@@ -483,7 +494,7 @@ export class ApprovalsService {
   }
 
   private async loadProcessContext(user: AuthUser, processId: string) {
-    const supabase = getSupabaseAdminClient();
+    const supabase = getSupabaseForUser(user);
     if (!supabase) {
       const process = processDemoStore.getProcess(user.tenantId, processId);
       if (!process) {

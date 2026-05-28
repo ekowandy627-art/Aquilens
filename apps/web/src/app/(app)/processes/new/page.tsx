@@ -20,12 +20,11 @@ const methods = [
     enabled: true,
   },
   {
-    href: "#",
+    href: "/processes/new/upload",
     title: "Upload a file",
     description: "Import an existing SOP document.",
     icon: FileUp,
-    enabled: false,
-    badge: "Coming soon",
+    enabled: true,
   },
   {
     href: "#",
