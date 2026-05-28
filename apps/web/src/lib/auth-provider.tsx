@@ -17,7 +17,7 @@ import {
   type DemoUser,
 } from "@/lib/demo-auth";
 import { apiFetch } from "@/lib/api-client";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createSupabaseBrowserClient, hasSupabaseBrowserEnv } from "@/lib/supabase/client";
 
 export type AuthContext = {
   loading: boolean;
@@ -139,6 +139,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [context, setContext] = useState<AuthContext>(emptyContext);
 
   useLayoutEffect(() => {
+    if (hasSupabaseBrowserEnv()) {
+      return;
+    }
+
     const demo = demoContextFromStorage();
     if (demo) {
       setContext(demo);
@@ -149,21 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true;
 
     async function load() {
-      const demoFromStorage = getSessionContext(loadSession());
-      if (demoFromStorage.user) {
-        if (mounted) {
-          setContext({
-            loading: false,
-            source: "demo",
-            user: demoFromStorage.user,
-            tenant: demoFromStorage.tenant,
-            roles: demoFromStorage.roles,
-            memberships: demoFromStorage.memberships,
-          });
-        }
-        return;
-      }
-
       const supabase = createSupabaseBrowserClient();
 
       if (supabase) {
@@ -254,6 +243,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           }
         }
+      }
+
+      const demoFromStorage = getSessionContext(loadSession());
+      if (demoFromStorage.user) {
+        if (mounted) {
+          setContext({
+            loading: false,
+            source: "demo",
+            user: demoFromStorage.user,
+            tenant: demoFromStorage.tenant,
+            roles: demoFromStorage.roles,
+            memberships: demoFromStorage.memberships,
+          });
+        }
+        return;
       }
 
       const demo = getSessionContext(loadSession());

@@ -1,23 +1,43 @@
 "use client";
 
 import { loadSession } from "@/lib/demo-auth";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  createSupabaseBrowserClient,
+  hasSupabaseBrowserEnv,
+} from "@/lib/supabase/client";
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
 
-async function resolveAuthToken() {
-  const supabase = createSupabaseBrowserClient();
-  const { data } = supabase
-    ? await supabase.auth.getSession()
-    : { data: { session: null } };
+function demoSessionAllowed() {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_ALLOW_DEMO_SESSION === "true"
+  );
+}
 
-  if (data.session?.access_token) {
-    return data.session.access_token;
+export async function resolveAuthToken() {
+  const supabase = createSupabaseBrowserClient();
+
+  if (supabase) {
+    let { data } = await supabase.auth.getSession();
+
+    if (!data.session?.access_token) {
+      await supabase.auth.refreshSession();
+      ({ data } = await supabase.auth.getSession());
+    }
+
+    if (data.session?.access_token) {
+      return data.session.access_token;
+    }
+  }
+
+  if (hasSupabaseBrowserEnv()) {
+    return null;
   }
 
   const demoSession = loadSession();
-  if (demoSession) {
+  if (demoSession && demoSessionAllowed()) {
     return `demo:${demoSession.userId}`;
   }
 

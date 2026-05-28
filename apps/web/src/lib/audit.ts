@@ -1,6 +1,6 @@
 "use client";
 
-import { apiFetch } from "@/lib/api-client";
+import { apiFetch, resolveAuthToken } from "@/lib/api-client";
 
 export type AuditEvent = {
   id: string;
@@ -133,21 +133,7 @@ export async function revokeGuestAccess(id: string) {
 }
 
 export async function downloadAuditCsv(filters: AuditFilters = {}) {
-  const { loadSession } = await import("@/lib/demo-auth");
-  const { createSupabaseBrowserClient } = await import("@/lib/supabase/client");
-
-  const supabase = createSupabaseBrowserClient();
-  const { data } = supabase
-    ? await supabase.auth.getSession()
-    : { data: { session: null } };
-
-  let token = data.session?.access_token ?? null;
-  if (!token) {
-    const demoSession = loadSession();
-    if (demoSession) {
-      token = `demo:${demoSession.userId}`;
-    }
-  }
+  const token = await resolveAuthToken();
 
   if (!token) {
     throw new Error("Not signed in");
@@ -168,21 +154,7 @@ export async function downloadAuditCsv(filters: AuditFilters = {}) {
 }
 
 export async function downloadAuditPackFile(jobId: string) {
-  const { loadSession } = await import("@/lib/demo-auth");
-  const { createSupabaseBrowserClient } = await import("@/lib/supabase/client");
-
-  const supabase = createSupabaseBrowserClient();
-  const { data } = supabase
-    ? await supabase.auth.getSession()
-    : { data: { session: null } };
-
-  let token = data.session?.access_token ?? null;
-  if (!token) {
-    const demoSession = loadSession();
-    if (demoSession) {
-      token = `demo:${demoSession.userId}`;
-    }
-  }
+  const token = await resolveAuthToken();
 
   if (!token) {
     throw new Error("Not signed in");

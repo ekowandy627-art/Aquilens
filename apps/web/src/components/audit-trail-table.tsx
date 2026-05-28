@@ -13,6 +13,7 @@ import {
   type AuditEvent,
   type AuditFilters,
 } from "@/lib/audit";
+import { useAuthContext } from "@/lib/use-auth-context";
 
 const EMPTY_AUDIT_FILTERS: AuditFilters = {};
 
@@ -39,6 +40,7 @@ export function AuditTrailTable({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filters, setFilters] = useState<AuditFilters>(initialFilters);
   const [exporting, setExporting] = useState(false);
+  const { loading: authLoading } = useAuthContext();
 
   const entityType = initialFilters.entityType ?? filters.entityType;
   const entityId = initialFilters.entityId ?? filters.entityId;
@@ -47,6 +49,20 @@ export function AuditTrailTable({
   const dateFrom = initialFilters.dateFrom ?? filters.dateFrom;
   const dateTo = initialFilters.dateTo ?? filters.dateTo;
   const cursor = initialFilters.cursor ?? filters.cursor;
+
+  const filterKey = useMemo(
+    () =>
+      JSON.stringify({
+        entityType,
+        entityId,
+        actorId,
+        eventType,
+        dateFrom,
+        dateTo,
+        cursor,
+      }),
+    [entityType, entityId, actorId, eventType, dateFrom, dateTo, cursor],
+  );
 
   const queryFilters = useMemo(
     () => ({
@@ -62,6 +78,10 @@ export function AuditTrailTable({
   );
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     let cancelled = false;
     async function load() {
       setLoading(true);
@@ -69,7 +89,7 @@ export function AuditTrailTable({
       try {
         const data = await fetchAuditEvents(queryFilters);
         if (!cancelled) {
-          setItems(data.items);
+          setItems(Array.isArray(data.items) ? data.items : []);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -87,7 +107,7 @@ export function AuditTrailTable({
     return () => {
       cancelled = true;
     };
-  }, [queryFilters]);
+  }, [authLoading, filterKey, queryFilters]);
 
   async function handleExport() {
     setExporting(true);

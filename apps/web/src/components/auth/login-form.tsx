@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { AlertCircle, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { apiFetch, apiFetchPublic } from "@/lib/api-client";
-import { signInDemo } from "@/lib/demo-auth";
+import { clearSession, signInDemo } from "@/lib/demo-auth";
 import {
   createSupabaseBrowserClient,
   hasSupabaseBrowserEnv,
@@ -51,7 +51,7 @@ export function LoginForm() {
         return;
       }
 
-      signInDemo(email, password);
+      clearSession();
 
       await apiFetch("/auth/events/login", { method: "POST", body: "{}" }).catch(
         () => undefined,
