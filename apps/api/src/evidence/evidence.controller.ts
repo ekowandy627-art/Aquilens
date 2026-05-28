@@ -22,6 +22,11 @@ import { EvidenceError } from "./evidence.errors";
 import { EvidenceService } from "./evidence.service";
 
 type UploadNotesDto = { notes?: string };
+type UploadedEvidenceFile = {
+  originalname: string;
+  mimetype: string;
+  buffer: Buffer;
+};
 
 @Controller("api/v1")
 @UseGuards(AuthGuard, PermissionGuard)
@@ -38,7 +43,7 @@ export class EvidenceController {
     @CurrentUser() user: AuthUser,
     @Param("workflowId") workflowId: string,
     @Param("taskId") taskId: string,
-    @UploadedFile() file: Express.Multer.File | undefined,
+    @UploadedFile() file: UploadedEvidenceFile | undefined,
     @Body() body: UploadNotesDto,
   ) {
     try {

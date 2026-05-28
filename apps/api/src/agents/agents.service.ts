@@ -809,13 +809,24 @@ export class AgentsService {
       throw new Error(error.message);
     }
     return (data ?? []).map((row) => {
-      const agent = row.ai_agents as { id: string; agent_code: string; name: string };
+      const nested = row.ai_agents as Array<{
+        id: string;
+        agent_code: string;
+        name: string;
+      }> | null;
+      const agent = nested?.[0];
+      if (!agent) {
+        return null;
+      }
       return {
         id: agent.id,
         agentCode: agent.agent_code,
         name: agent.name,
       };
-    });
+    }).filter(
+      (agent): agent is { id: string; agentCode: string; name: string } =>
+        agent !== null,
+    );
   }
 
   private toAgentSummaryFromRow(row: Record<string, unknown>) {

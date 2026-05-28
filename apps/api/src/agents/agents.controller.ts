@@ -167,14 +167,14 @@ export class AgentsController {
   async deprecate(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     try {
       const data = await this.agents.deprecate(user, id);
+      const deprecatedAgent = "agent" in data ? data.agent : data;
 
       await this.audit.log(user, {
         eventType: "agent.deprecated",
         entityType: "Agent",
-        entityId: data.agent.id,
-        entityName: data.agent.name,
-        action: `Deprecated agent "${data.agent.name}"`,
-        metadata: data.impact,
+        entityId: deprecatedAgent.id,
+        entityName: deprecatedAgent.name,
+        action: `Deprecated agent "${deprecatedAgent.name}"`,
       });
 
       return { success: true, data };

@@ -151,6 +151,7 @@ function addSteps(
   steps: Map<string, ProcessStepRecord>,
   stepDefs: Array<{
     title: string;
+    description?: string;
     stepType?: ProcessStepRecord["stepType"];
     evidenceRequired?: boolean;
   }>,
@@ -162,6 +163,7 @@ function addSteps(
       processVersionId: versionId,
       stepNumber: index + 1,
       title: input.title,
+      description: input.description,
       stepType: input.stepType ?? "manual",
       evidenceRequired: input.evidenceRequired ?? false,
     };

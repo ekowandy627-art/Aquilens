@@ -12,6 +12,7 @@ import {
   assertPreviousTaskComplete,
   countCompletedTasks,
   isTaskDone,
+  type WorkflowTaskStatus,
 } from "./workflow-execution";
 import { workflowDemoStore } from "./workflow-demo.store";
 
@@ -31,6 +32,8 @@ type WorkflowTaskForExecution = {
   assignedTo?: string;
   evidenceRequired: boolean;
 };
+
+type WorkflowTaskRecord = ReturnType<WorkflowsService["toTaskRecord"]>;
 
 type StartWorkflowInput = {
   processId: string;
@@ -800,15 +803,7 @@ export class WorkflowsService {
 
   private toWorkflowDetailFromRow(
     row: Record<string, unknown>,
-    tasks: Array<{
-      status:
-        | "pending"
-        | "in_progress"
-        | "completed"
-        | "skipped"
-        | "approved"
-        | "rejected";
-    }>,
+    tasks: WorkflowTaskRecord[],
   ) {
     return {
       id: row.id as string,
@@ -836,7 +831,7 @@ export class WorkflowsService {
     title: string;
     description?: string;
     stepType: string;
-    status: string;
+    status: WorkflowTaskStatus;
     assignedTo?: string;
     assignedRole?: string;
     evidenceRequired: boolean;
@@ -854,7 +849,7 @@ export class WorkflowsService {
       title: task.title,
       description: task.description,
       stepType: task.stepType,
-      status: task.status,
+      status: task.status as WorkflowTaskStatus,
       assignedTo: task.assignedTo,
       assignedRole: task.assignedRole,
       evidenceRequired: task.evidenceRequired,
@@ -863,12 +858,12 @@ export class WorkflowsService {
       completedBy: task.completedBy,
       notes: task.notes,
       skipReason: task.skipReason,
-      isDone: isTaskDone(task.status as never),
+      isDone: isTaskDone(task.status),
     };
   }
 
   private toTaskRecordFromRow(row: Record<string, unknown>) {
-    const status = row.status as string;
+    const status = row.status as WorkflowTaskStatus;
     return {
       id: row.id as string,
       workflowInstanceId: row.workflow_instance_id as string,

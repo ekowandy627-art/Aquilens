@@ -68,7 +68,7 @@ function buildSearchContent(agent: Pick<AgentRecord, "name" | "description" | "p
 }
 
 function seedAgent(
-  input: Omit<AgentRecord, "createdAt" | "searchContent"> & { id?: string },
+  input: Omit<AgentRecord, "id" | "createdAt" | "searchContent"> & { id?: string },
 ) {
   const id = input.id ?? randomUUID();
   const record: AgentRecord = {
@@ -242,7 +242,6 @@ export class AgentDemoStore {
       status: input.status ?? "active",
       lastAttestedAt,
       nextAttestationDue,
-      createdAt: now,
     });
     return record;
   }
