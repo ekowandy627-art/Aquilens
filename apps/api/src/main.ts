@@ -2,8 +2,14 @@ import "reflect-metadata";
 import "dotenv/config";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
+import { hasSupabaseAdminEnv } from "./supabase/admin-client";
 
 async function bootstrap() {
+  if (process.env.NODE_ENV === "production" && !hasSupabaseAdminEnv()) {
+    throw new Error(
+      "Supabase admin environment variables are required in production (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).",
+    );
+  }
   const app = await NestFactory.create(AppModule);
   const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000")
     .split(",")

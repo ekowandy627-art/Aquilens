@@ -45,6 +45,12 @@ const tabs = [
     href: "/settings/data",
     icon: Database,
   },
+  {
+    label: "Guest Access",
+    description: "External auditor read-only access links.",
+    href: "/settings/guest-access",
+    icon: Shield,
+  },
 ];
 
 export default function SettingsPage() {

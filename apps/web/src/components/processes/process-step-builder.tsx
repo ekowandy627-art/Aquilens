@@ -1,8 +1,11 @@
 "use client";
 
-import { GripVertical, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import Link from "next/link";
+import { Bot, GripVertical, Plus, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { ProcessStep } from "@/lib/processes";
+import type { LinkedAgent } from "@/lib/agents";
+import { apiFetch } from "@/lib/api-client";
 
 export type DraftStep = Omit<ProcessStep, "id" | "stepNumber"> & {
   id?: string;
@@ -12,15 +15,79 @@ export type DraftStep = Omit<ProcessStep, "id" | "stepNumber"> & {
 type ProcessStepBuilderProps = {
   steps: DraftStep[];
   readOnly?: boolean;
+  processId?: string;
+  versionId?: string;
   onChange: (steps: DraftStep[]) => void;
 };
 
 export function ProcessStepBuilder({
   steps,
   readOnly = false,
+  processId,
+  versionId,
   onChange,
 }: ProcessStepBuilderProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [registryAgents, setRegistryAgents] = useState<LinkedAgent[]>([]);
+  const [linkingStepIndex, setLinkingStepIndex] = useState<number | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
+
+  useEffect(() => {
+    if (readOnly || !processId) {
+      return;
+    }
+    let cancelled = false;
+    async function loadAgents() {
+      try {
+        const agents = await apiFetch<
+          Array<{ id: string; agentCode: string; name: string }>
+        >("/agents");
+        if (!cancelled) {
+          setRegistryAgents(
+            agents.map((agent) => ({
+              id: agent.id,
+              agentCode: agent.agentCode,
+              name: agent.name,
+            })),
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setRegistryAgents([]);
+        }
+      }
+    }
+    void loadAgents();
+    return () => {
+      cancelled = true;
+    };
+  }, [processId, readOnly]);
+
+  async function linkAgent(stepIndex: number) {
+    const step = steps[stepIndex];
+    if (!processId || !versionId || !step?.id || !selectedAgentId) {
+      return;
+    }
+    setLinkBusy(true);
+    try {
+      const result = await apiFetch<{ agent: LinkedAgent }>(
+        `/processes/${processId}/versions/${versionId}/steps/${step.id}/agents`,
+        {
+          method: "POST",
+          body: JSON.stringify({ agentId: selectedAgentId }),
+        },
+      );
+      const existing = step.agents ?? [];
+      if (!existing.some((agent) => agent.id === result.agent.id)) {
+        updateStep(stepIndex, { agents: [...existing, result.agent] });
+      }
+      setLinkingStepIndex(null);
+      setSelectedAgentId("");
+    } finally {
+      setLinkBusy(false);
+    }
+  }
 
   function updateStep(index: number, patch: Partial<DraftStep>) {
     onChange(
@@ -186,17 +253,67 @@ export function ProcessStepBuilder({
               Evidence required
             </label>
 
-            {!readOnly ? (
-              <div className="md:col-span-2">
-                <button
-                  type="button"
-                  className="rounded-full border border-dashed border-border px-3 py-1 text-xs text-text-muted"
-                  disabled
+            <div className="md:col-span-2 space-y-2">
+              {(step.agents ?? []).map((agent) => (
+                <Link
+                  key={agent.id}
+                  href={`/agents/${agent.agentCode}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-bg px-3 py-1 text-xs font-medium text-slate-800 hover:bg-white"
                 >
-                  Add AI Model (Phase 8)
-                </button>
-              </div>
-            ) : null}
+                  <Bot className="size-3.5" aria-hidden="true" />
+                  [AI] {agent.name} →
+                </Link>
+              ))}
+              {!readOnly && processId && versionId && step.id ? (
+                <div className="space-y-2">
+                  {linkingStepIndex === index ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={selectedAgentId}
+                        onChange={(event) => setSelectedAgentId(event.target.value)}
+                        className="h-9 rounded-md border border-border bg-white px-3 text-sm"
+                      >
+                        <option value="">Select registered agent…</option>
+                        {registryAgents.map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.agentCode} — {agent.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        disabled={!selectedAgentId || linkBusy}
+                        onClick={() => void linkAgent(index)}
+                        className="rounded-md border border-border px-3 py-1.5 text-xs font-medium"
+                      >
+                        Link agent
+                      </button>
+                      <Link
+                        href="/agents/new"
+                        className="text-xs text-text-muted hover:text-slate-900"
+                      >
+                        + Register new agent
+                      </Link>
+                      <button
+                        type="button"
+                        className="text-xs text-text-muted"
+                        onClick={() => setLinkingStepIndex(null)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-full border border-dashed border-border px-3 py-1 text-xs text-text-muted hover:border-slate-400 hover:text-slate-800"
+                      onClick={() => setLinkingStepIndex(index)}
+                    >
+                      Add AI model
+                    </button>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       ))}

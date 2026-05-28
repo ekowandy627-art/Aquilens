@@ -4,6 +4,7 @@ export type AppRoute =
   | "/workflows"
   | "/agents"
   | "/audit"
+  | "/audit-packs"
   | "/settings";
 
 export type EmptyStateConfig = {

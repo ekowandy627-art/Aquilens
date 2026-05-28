@@ -57,7 +57,29 @@ export class AuthGuard implements CanActivate {
     const supabase = getSupabaseAdminClient();
 
     if (!supabase) {
-      request.user = resolveDemoUser(token);
+      if (process.env.NODE_ENV === "production") {
+        throw new UnauthorizedException({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message:
+              "Supabase authentication must be configured in production environments.",
+            status: 401,
+          },
+        });
+      }
+      try {
+        request.user = resolveDemoUser(token);
+      } catch {
+        throw new UnauthorizedException({
+          success: false,
+          error: {
+            code: "UNAUTHORIZED",
+            message: "Invalid demo bearer token.",
+            status: 401,
+          },
+        });
+      }
       return true;
     }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Save } from "lucide-react";
+import { AutosaveIndicator } from "@/components/autosave-indicator";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,8 @@ export function OrganisationSettings() {
   );
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -49,10 +52,22 @@ export function OrganisationSettings() {
 
   async function save() {
     setLoading(true);
-    const savedProfile = await saveTenantProfileToApi(profile);
-    setProfile(savedProfile);
-    setSaved(true);
-    setLoading(false);
+    setError(null);
+    try {
+      const savedProfile = await saveTenantProfileToApi(profile);
+      setProfile(savedProfile);
+      setSaved(true);
+      setLastSavedAt(new Date());
+    } catch (saveError) {
+      setSaved(false);
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Unable to save organisation settings.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -61,10 +76,13 @@ export function OrganisationSettings() {
         title="Organisation"
         description="Institution profile and tenant setup details used across the app shell."
         action={
-          <Button type="button" onClick={() => void save()} disabled={loading}>
-            <Save className="size-4" aria-hidden="true" />
-            {loading ? "Saving..." : "Save changes"}
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <Button type="button" onClick={() => void save()} disabled={loading}>
+              <Save className="size-4" aria-hidden="true" />
+              {loading ? "Saving..." : "Save changes"}
+            </Button>
+            <AutosaveIndicator lastSavedAt={lastSavedAt} />
+          </div>
         }
       />
 
@@ -122,6 +140,11 @@ export function OrganisationSettings() {
             ? "Changes saved to the tenant profile."
             : "Changes will update the live tenant profile and audit log."}
         </p>
+        {error ? (
+          <p className="mt-2 text-sm text-red-600" role="alert">
+            {error}
+          </p>
+        ) : null}
       </section>
     </>
   );

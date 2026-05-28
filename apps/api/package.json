@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/*.test.ts"
+    "test": "NODE_ENV=test tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.9",
@@ -15,12 +15,15 @@
     "@nestjs/platform-express": "^11.1.9",
     "@supabase/supabase-js": "^2.106.2",
     "dotenv": "^17.2.2",
+    "pdfkit": "^0.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@nestjs/testing": "^11.1.9",
+    "@types/express": "^5.0.6",
     "@types/node": "^20.19.25",
+    "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^6.0.3",
     "supertest": "^7.1.4",
     "tsx": "^4.21.0",

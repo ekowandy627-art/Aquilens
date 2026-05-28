@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, ChevronLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
-import { useState } from "react";
+import { ChevronLeft, ChevronRight, LogOut, UserRound } from "lucide-react";
+import { useMemo, useState } from "react";
 import clsx from "clsx";
-import { navItems, settingsNavItem, titleFromPathname } from "@/lib/navigation";
+import { settingsNavItem, titleFromPathname, visibleNavItems } from "@/lib/navigation";
 import { getSessionContext, switchTenant } from "@/lib/demo-auth";
 import { signOutEverywhere, useAuthContext } from "@/lib/use-auth-context";
+import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
+import { NotificationBell } from "@/components/notification-bell";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -19,6 +21,20 @@ export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
   const title = titleFromPathname(pathname);
   const context = useAuthContext();
+  const sidebarItems = visibleNavItems(context.roles.map((role) => role.name));
+  const showSettings = !context.roles.some((role) => role.name === "Staff");
+  const tenantOptions = useMemo(
+    () =>
+      context.memberships.map((membership) => ({
+        tenantId: membership.tenantId,
+        tenantName:
+          getSessionContext({
+            userId: membership.id,
+            tenantId: membership.tenantId,
+          }).tenant?.name ?? membership.tenantId,
+      })),
+    [context.memberships],
+  );
 
   async function signOut() {
     await signOutEverywhere();
@@ -51,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
-          {navItems.map((item) => {
+          {sidebarItems.map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.href);
 
@@ -74,22 +90,24 @@ export function AppShell({ children }: AppShellProps) {
             );
           })}
 
-          <div className="mt-auto">
-            <Link
-              href={settingsNavItem.href}
-              title={collapsed ? settingsNavItem.label : undefined}
-              className={clsx(
-                "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
-                pathname.startsWith(settingsNavItem.href)
-                  ? "bg-brand-navy text-white"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
-                collapsed && "justify-center px-0",
-              )}
-            >
-              <settingsNavItem.icon className="size-4 shrink-0" aria-hidden="true" />
-              {!collapsed && <span>{settingsNavItem.label}</span>}
-            </Link>
-          </div>
+          {showSettings ? (
+            <div className="mt-auto">
+              <Link
+                href={settingsNavItem.href}
+                title={collapsed ? settingsNavItem.label : undefined}
+                className={clsx(
+                  "flex h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors",
+                  pathname.startsWith(settingsNavItem.href)
+                    ? "bg-brand-navy text-white"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950",
+                  collapsed && "justify-center px-0",
+                )}
+              >
+                <settingsNavItem.icon className="size-4 shrink-0" aria-hidden="true" />
+                {!collapsed && <span>{settingsNavItem.label}</span>}
+              </Link>
+            </div>
+          ) : null}
         </nav>
 
         <button
@@ -121,31 +139,18 @@ export function AppShell({ children }: AppShellProps) {
                 className="hidden h-9 rounded-md border border-border bg-white px-2 text-sm text-slate-700 md:block"
                 aria-label="Switch tenant"
               >
-                {context.memberships.map((membership) => {
-                  const tenant = getSessionContext({
-                    userId: membership.id,
-                    tenantId: membership.tenantId,
-                  }).tenant;
-
-                  return (
-                    <option key={membership.tenantId} value={membership.tenantId}>
-                      {tenant?.name}
-                    </option>
-                  );
-                })}
+                {tenantOptions.map((tenantOption) => (
+                  <option key={tenantOption.tenantId} value={tenantOption.tenantId}>
+                    {tenantOption.tenantName}
+                  </option>
+                ))}
               </select>
             )}
-            <button
-              type="button"
-              className="grid size-9 place-items-center rounded-md border border-border text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950"
-              aria-label="Notifications"
-            >
-              <Bell className="size-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
+            <NotificationBell />
+            <Link
+              href="/profile"
               className="flex h-9 items-center gap-2 rounded-md border border-border px-2.5 text-sm text-slate-700 transition-colors hover:bg-slate-50"
-              aria-label="Open user menu"
+              aria-label="Open profile"
             >
               <span className="grid size-6 place-items-center rounded-full bg-slate-100">
                 <UserRound className="size-3.5" aria-hidden="true" />
@@ -155,7 +160,7 @@ export function AppShell({ children }: AppShellProps) {
                   ? "Loading..."
                   : (context.user?.fullName ?? "Not signed in")}
               </span>
-            </button>
+            </Link>
             {context.user ? (
               <button
                 type="button"
@@ -169,7 +174,10 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 px-6 py-6">{children}</main>
+        <main className="min-w-0 flex-1 px-6 py-6">
+          <AppBreadcrumbs />
+          {children}
+        </main>
       </div>
     </div>
   );

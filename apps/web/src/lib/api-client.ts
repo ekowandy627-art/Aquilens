@@ -72,3 +72,30 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
 
   return body.data as T;
 }
+
+export async function apiUpload<T>(path: string, formData: FormData) {
+  const token = await resolveAuthToken();
+
+  if (!token) {
+    throw new Error("Not signed in");
+  }
+
+  const response = await fetch(`${apiBaseUrl.replace(/\/$/, "")}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  const body = (await response.json()) as {
+    success: boolean;
+    data?: T;
+    error?: { message?: string; code?: string };
+  };
+
+  if (!response.ok || !body.success) {
+    throw new Error(body.error?.message ?? body.error?.code ?? "Upload failed");
+  }
+
+  return body.data as T;
+}

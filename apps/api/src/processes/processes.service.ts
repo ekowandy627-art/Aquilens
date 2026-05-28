@@ -1,9 +1,14 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { AgentsService } from "../agents/agents.service";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../auth/auth.types";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
 import { generateProcessCode } from "./process-code";
 import type { ExecutionSchedule } from "./execution-schedule";
+import {
+  canEditProcess,
+  assertProcessEditable,
+} from "../approvals/process-lifecycle";
 import {
   assertProcessEdit,
   assertProcessPeopleManagement,
@@ -30,6 +35,10 @@ type ScaffoldLookup = {
 @Injectable()
 export class ProcessesService {
   private readonly demo = processDemoStore;
+
+  constructor(
+    @Inject(AgentsService) private readonly agentsService: AgentsService,
+  ) {}
 
   async list(user: AuthUser, filters: ProcessListFilters) {
     const supabase = getSupabaseAdminClient();
@@ -118,10 +127,16 @@ export class ProcessesService {
       const people = this.demo.listPeople(process.currentVersionId);
       const access = resolveProcessAccess(user, people, process.createdBy);
       assertProcessView(access);
+      const lifecycle = this.buildLifecycle(
+        process.status,
+        version?.status ?? "draft",
+        access,
+      );
 
       return {
         ...this.toDetail(process),
-        access,
+        access: lifecycle.access,
+        lifecycle: lifecycle.flags,
         currentVersion: version
           ? {
               id: version.id,
@@ -131,7 +146,7 @@ export class ProcessesService {
               createdAt: version.createdAt,
             }
           : null,
-        steps: steps.map((step) => this.toStep(step)),
+        steps: await this.enrichStepsWithAgents(user.tenantId, steps),
         people: people.map((person) => ({
           id: person.id,
           userId: person.userId,
@@ -187,6 +202,16 @@ export class ProcessesService {
       process.created_by as string | undefined,
     );
     assertProcessView(access);
+    const lifecycle = this.buildLifecycle(
+      process.status as "draft" | "under_review" | "active" | "retired",
+      (versionResult.data?.status ?? "draft") as
+        | "draft"
+        | "under_review"
+        | "active"
+        | "superseded"
+        | "rejected",
+      access,
+    );
 
     return {
       id: process.id,
@@ -217,7 +242,8 @@ export class ProcessesService {
         undefined,
       createdAt: process.created_at,
       updatedAt: process.updated_at,
-      access,
+      access: lifecycle.access,
+      lifecycle: lifecycle.flags,
       currentVersion: versionResult.data
         ? {
             id: versionResult.data.id,
@@ -227,19 +253,22 @@ export class ProcessesService {
             createdAt: versionResult.data.created_at,
           }
         : null,
-      steps: (stepsResult.data ?? []).map((step) => ({
-        id: step.id,
-        stepNumber: step.step_number,
-        title: step.title,
-        description: step.description ?? undefined,
-        responsibleRole: step.responsible_role ?? undefined,
-        stepType: step.step_type,
-        inputs: step.inputs ?? undefined,
-        outputs: step.outputs ?? undefined,
-        controls: step.controls ?? undefined,
-        notes: step.notes ?? undefined,
-        evidenceRequired: step.evidence_required,
-      })),
+      steps: await this.enrichStepsWithAgents(
+        user.tenantId,
+        (stepsResult.data ?? []).map((step) => ({
+          id: step.id as string,
+          stepNumber: step.step_number as number,
+          title: step.title as string,
+          description: (step.description as string) ?? undefined,
+          responsibleRole: (step.responsible_role as string) ?? undefined,
+          stepType: step.step_type as string,
+          inputs: (step.inputs as string) ?? undefined,
+          outputs: (step.outputs as string) ?? undefined,
+          controls: (step.controls as string) ?? undefined,
+          notes: (step.notes as string) ?? undefined,
+          evidenceRequired: step.evidence_required as boolean,
+        })),
+      ),
       people,
     };
   }
@@ -676,6 +705,7 @@ export class ProcessesService {
       throw new ProcessAccessError("NOT_FOUND", "Process not found.");
     }
     assertProcessEdit(detail.access);
+    assertProcessEditable(detail.processStatus, detail.versionStatus);
     return detail;
   }
 
@@ -694,15 +724,18 @@ export class ProcessesService {
       if (!process) {
         return null;
       }
+      const version = this.demo.getVersion(process.currentVersionId);
       const people = this.demo.listPeople(process.currentVersionId);
       return {
         access: resolveProcessAccess(user, people, process.createdBy),
+        processStatus: process.status,
+        versionStatus: version?.status ?? "draft",
       };
     }
 
     const { data: process } = await supabase
       .from("processes")
-      .select("id, created_by, current_version_id")
+      .select("id, status, created_by, current_version_id")
       .eq("tenant_id", user.tenantId)
       .eq("id", processId)
       .maybeSingle();
@@ -711,6 +744,12 @@ export class ProcessesService {
       return null;
     }
 
+    const { data: version } = await supabase
+      .from("process_versions")
+      .select("status")
+      .eq("id", process.current_version_id)
+      .maybeSingle();
+
     const people = await this.loadPeople(process.current_version_id as string, supabase);
     return {
       access: resolveProcessAccess(
@@ -718,6 +757,38 @@ export class ProcessesService {
         people,
         process.created_by as string | undefined,
       ),
+      processStatus: process.status as "draft" | "under_review" | "active" | "retired",
+      versionStatus: (version?.status ?? "draft") as
+        | "draft"
+        | "under_review"
+        | "active"
+        | "superseded"
+        | "rejected",
+    };
+  }
+
+  private buildLifecycle(
+    processStatus: "draft" | "under_review" | "active" | "retired",
+    versionStatus:
+      | "draft"
+      | "under_review"
+      | "active"
+      | "superseded"
+      | "rejected",
+    access: ReturnType<typeof resolveProcessAccess>,
+  ) {
+    const editable = access.canEdit && canEditProcess(processStatus, versionStatus);
+    return {
+      access: { ...access, canEdit: editable },
+      flags: {
+        canSubmit:
+          editable &&
+          processStatus === "draft" &&
+          versionStatus === "draft",
+        canCreateVersion:
+          access.canEdit && processStatus === "active",
+        canStartWorkflow: processStatus === "active",
+      },
     };
   }
 
@@ -939,6 +1010,18 @@ export class ProcessesService {
       notes: step.notes,
       evidenceRequired: step.evidenceRequired,
     };
+  }
+
+  private async enrichStepsWithAgents(
+    tenantId: string,
+    steps: Parameters<ProcessesService["toStep"]>[0][],
+  ) {
+    return Promise.all(
+      steps.map(async (step) => ({
+        ...this.toStep(step),
+        agents: await this.agentsService.agentsForStep(tenantId, step.id),
+      })),
+    );
   }
 }
 

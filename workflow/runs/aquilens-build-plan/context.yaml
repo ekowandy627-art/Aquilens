@@ -1,0 +1,40 @@
+approved: true
+plan_slug: aquilens-build-plan
+plan_file: /Users/chalefromghana/Projects/Aquilens/BUILD_PLAN.md
+project_folder: /Users/chalefromghana/Projects/Aquilens
+
+test_locations:
+  - apps/api/test/
+  - apps/web/
+
+source_roots:
+  - apps/api/src/
+  - apps/web/src/
+  - packages/shared/
+  - supabase/migrations/
+  - scripts/
+
+documentation_locations:
+  - BUILD_PLAN.md
+  - README.md
+  - docs/
+  - apps/web/README.md
+  - .env.example
+  - apps/api/.env.example
+  - workflow/PARALLEL_SUBAGENT_TESTING.md
+
+notes: |
+  Retroactive run initialized 2026-05-28. Phases 0–10 implemented outside the gate;
+  marked APPROVED after full API regression (75/75 pass) and web build clean.
+
+  Parallel subagent protocol (required when multiple builders run at once):
+  1. Each subagent implements ONE phase scope only (Builder role).
+  2. Parent runs Tester immediately when a subagent returns — do not merge blindly.
+  3. Tester commands per phase (minimum):
+     - npm test (from repo root)
+     - cd apps/web && npm run build
+     - Phase-scoped: npx tsx --test test/<phase>.test.ts in apps/api
+  4. Record pass/fail in phase-state.yaml before Approver review.
+  5. Approver unlocks next phase only after APPROVED.
+
+  Demo auth: Bearer demo:user-gis-owner (etc.). Password Aquilens2024! for Supabase users.

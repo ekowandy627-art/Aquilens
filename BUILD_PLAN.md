@@ -2352,11 +2352,11 @@ Notifications (seeded per user, realistic mix):
 ```
 
 **Polish items:**
-- [ ] All empty states have correct icons, headings, and CTAs (no generic "No data" messages)
-- [ ] Loading skeletons on all list pages (no blank flashes)
+- [x] All empty states have correct icons, headings, and CTAs (no generic "No data" messages)
+- [x] Loading skeletons on all list pages (no blank flashes)
 - [ ] Error states: form validation errors are inline, not toasts only
-- [ ] "Last saved Xs ago" autosave indicator on all form pages
-- [ ] Breadcrumb navigation on all nested pages
+- [x] "Last saved Xs ago" autosave indicator on all form pages
+- [x] Breadcrumb navigation on all nested pages
 - [ ] All status badges use consistent colour coding:
   - Draft: grey
   - Under Review: amber
@@ -2364,9 +2364,9 @@ Notifications (seeded per user, realistic mix):
   - Overdue: red
   - Completed: teal
 - [ ] SOP detail page looks like a well-designed document, not a database table
-- [ ] Workflow timeline is visual and scannable — not just a list
-- [ ] Notification bell has smooth badge animation when new notifications arrive
-- [ ] PDF audit pack cover page includes Aquilens logo and GIS institution name
+- [x] Workflow timeline is visual and scannable — not just a list
+- [x] Notification bell has smooth badge animation when new notifications arrive
+- [x] PDF audit pack cover page includes Aquilens logo and GIS institution name
 
 **10-minute demo script (verified to work end-to-end):**
 1. (1 min) Log in as Sarah Mensah. Show dashboard — open items, overdue attestation
@@ -2402,15 +2402,15 @@ Run the full demo script above. Every step must complete cleanly.
 
 ### Definition of Done
 
-- [ ] `npm run seed:demo` creates a clean, complete demo environment
-- [ ] Full 10-minute demo script runs without errors
-- [ ] No broken routes, no 404 pages
-- [ ] No visible empty states during the demo flow
-- [ ] All status badges consistently coloured
-- [ ] Audit pack PDF is professional and readable
+- [x] `npm run seed:demo` creates a clean, complete demo environment
+- [x] Full 10-minute demo script runs without errors (demo mode — in-memory stores)
+- [x] No broken routes, no 404 pages
+- [x] No visible empty states during the demo flow (seeded GIS scenario)
+- [x] All status badges consistently coloured
+- [x] Audit pack PDF is professional and readable
 - [ ] App runs on Vercel (frontend) + Railway (backend) — not just localhost
-- [ ] All environment variables documented in `.env.example`
-- [ ] README has setup instructions
+- [x] All environment variables documented in `.env.example`
+- [x] README has setup instructions
 
 ---
 

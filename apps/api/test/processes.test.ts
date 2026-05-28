@@ -1,10 +1,14 @@
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { beforeEach, describe, it } from "node:test";
 import { AppModule } from "../src/app.module";
+import { resetProcessDemoStore } from "../src/processes/process-demo.store";
 
 describe("processes API", () => {
+  beforeEach(() => {
+    resetProcessDemoStore();
+  });
   it("rejects list without a bearer token", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -198,7 +202,7 @@ describe("processes API", () => {
     await app.init();
 
     await request(app.getHttpServer())
-      .patch("/api/v1/processes/proc-gis-attendance")
+      .patch("/api/v1/processes/proc-gis-fees")
       .set("Authorization", "Bearer demo:user-gis-owner")
       .send({
         reviewFrequency: "quarterly",
@@ -207,7 +211,7 @@ describe("processes API", () => {
       .expect(200);
 
     await request(app.getHttpServer())
-      .get("/api/v1/processes/proc-gis-attendance")
+      .get("/api/v1/processes/proc-gis-fees")
       .set("Authorization", "Bearer demo:user-gis-owner")
       .expect(200)
       .expect((response) => {
@@ -228,28 +232,29 @@ describe("processes API", () => {
     await app.init();
 
     const detail = await request(app.getHttpServer())
-      .get("/api/v1/processes/proc-gis-attendance")
+      .get("/api/v1/processes/proc-gis-fees")
       .set("Authorization", "Bearer demo:user-gis-owner")
       .expect(200);
 
     const versionId = detail.body.data.currentVersion.id;
     const orderedIds = [
-      detail.body.data.steps[2].id,
+      detail.body.data.steps[3].id,
       detail.body.data.steps[0].id,
       detail.body.data.steps[1].id,
+      detail.body.data.steps[2].id,
     ];
 
     await request(app.getHttpServer())
-      .post(`/api/v1/processes/proc-gis-attendance/versions/${versionId}/steps/reorder`)
+      .post(`/api/v1/processes/proc-gis-fees/versions/${versionId}/steps/reorder`)
       .set("Authorization", "Bearer demo:user-gis-owner")
       .send({ orderedIds })
       .expect(201)
       .expect((response) => {
         assert.deepEqual(
           response.body.data.map((step: { stepNumber: number }) => step.stepNumber),
-          [1, 2, 3],
+          [1, 2, 3, 4],
         );
-        assert.equal(response.body.data[0].title, "Absence notified to parents");
+        assert.equal(response.body.data[0].title, "Reconcile payment with invoice");
       });
 
     await app.close();

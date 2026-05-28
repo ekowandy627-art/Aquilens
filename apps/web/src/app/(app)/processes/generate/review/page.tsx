@@ -51,7 +51,16 @@ type ReviewPayload = {
 export default function ReviewGeneratedSopPage() {
   const router = useRouter();
   const [payload, setPayload] = useState<ReviewPayload | null>(null);
-  const [aiFields, setAiFields] = useState<Set<string>>(new Set());
+  const [initialized, setInitialized] = useState(false);
+  const [aiFields, setAiFields] = useState<Set<string>>(
+    new Set([
+      "name",
+      "description",
+      "purpose",
+      "risk_rating",
+      "risk_notes",
+    ]),
+  );
   const [resolvedFields, setResolvedFields] = useState<Set<string>>(
     defaultResolvedFields(),
   );
@@ -61,6 +70,7 @@ export default function ReviewGeneratedSopPage() {
   >([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [missingPayload, setMissingPayload] = useState(false);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -71,35 +81,34 @@ export default function ReviewGeneratedSopPage() {
   const [riskNotes, setRiskNotes] = useState("");
 
   useEffect(() => {
+    if (initialized) {
+      return;
+    }
     const raw = sessionStorage.getItem(AI_SOP_REVIEW_STORAGE_KEY);
     if (!raw) {
       router.replace("/processes/generate");
+      window.setTimeout(() => {
+        setMissingPayload(true);
+      }, 0);
       return;
     }
 
-    const parsed = JSON.parse(raw) as ReviewPayload;
-    setPayload(parsed);
-    setName(parsed.draft.name);
-    setDescription(parsed.draft.description);
-    setPurpose(parsed.draft.purpose);
-    setRiskRating(parsed.draft.risk_rating);
-    setRiskNotes(parsed.draft.risk_notes);
-    setAiFields(
-      new Set([
-        "name",
-        "description",
-        "purpose",
-        "risk_rating",
-        "risk_notes",
-      ]),
-    );
+    window.setTimeout(() => {
+      const parsed = JSON.parse(raw) as ReviewPayload;
+      setPayload(parsed);
+      setName(parsed.draft.name);
+      setDescription(parsed.draft.description);
+      setPurpose(parsed.draft.purpose);
+      setRiskRating(parsed.draft.risk_rating);
+      setRiskNotes(parsed.draft.risk_notes);
+      setInitialized(true);
+      void apiFetch<Array<{ id: string; full_name: string; email: string }>>(
+        "/users",
+      ).then(setUsers);
+    }, 0);
+  }, [initialized, router]);
 
-    void apiFetch<Array<{ id: string; full_name: string; email: string }>>(
-      "/users",
-    ).then(setUsers);
-  }, [router]);
-
-  const gaps = payload?.gaps ?? [];
+  const gaps = useMemo(() => payload?.gaps ?? [], [payload]);
   const blocked = useMemo(
     () => hasBlockingGaps(gaps, resolvedFields),
     [gaps, resolvedFields],
@@ -186,7 +195,7 @@ export default function ReviewGeneratedSopPage() {
     }
   }
 
-  if (!payload) {
+  if (missingPayload || !payload) {
     return (
       <div className="rounded-lg border border-border bg-white p-6 text-sm text-text-muted">
         Loading AI draft…

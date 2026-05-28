@@ -12,6 +12,7 @@ import {
   ProcessPeoplePanel,
   type TenantUserOption,
 } from "@/components/processes/process-people-panel";
+import { AutosaveIndicator } from "@/components/autosave-indicator";
 import { PageHeader } from "@/components/page-header";
 import { PrimaryButton } from "@/components/primary-button";
 import { apiFetch } from "@/lib/api-client";
@@ -90,6 +91,7 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
       responsibleRole: step.responsibleRole,
       stepType: step.stepType,
       evidenceRequired: step.evidenceRequired,
+      agents: step.agents,
     })) ?? [],
   );
   const [ownerUserId, setOwnerUserId] = useState(
@@ -152,113 +154,7 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
     };
   }, []);
 
-  const autosaveLabel = lastSavedAt
-    ? `Last saved ${Math.max(1, Math.round((Date.now() - lastSavedAt.getTime()) / 1000))}s ago`
-    : "Not saved yet";
-
-  const persistDraft = useCallback(async (targetProcessId: string, redirectAfterCreate: boolean) => {
-    setError(null);
-    setSaving(true);
-
-    try {
-      const payload = {
-        functionId,
-        processAreaId,
-        name: name.trim(),
-        description: description.trim() || undefined,
-        purpose: purpose.trim() || undefined,
-        whoItAffects: splitList(whoItAffects),
-        linkedSystems: splitList(linkedSystems),
-        tags: splitList(tags),
-        riskRating,
-        riskNotes: riskNotes.trim() || undefined,
-        approvalRequired,
-        reviewFrequency,
-        executionSchedule,
-      };
-
-      if (mode === "create" && redirectAfterCreate) {
-        const created = await apiFetch<{ id: string; processCode?: string }>(
-          "/processes",
-          {
-            method: "POST",
-            body: JSON.stringify(payload),
-          },
-        );
-        await syncStepsAndPeople(created.id);
-        setLastSavedAt(new Date());
-        router.push(`/processes/${created.id}`);
-        return;
-      }
-
-      await apiFetch(`/processes/${targetProcessId}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
-
-      await syncStepsAndPeople(targetProcessId);
-      setLastSavedAt(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save process.");
-    } finally {
-      setSaving(false);
-    }
-  }, [
-    functionId,
-    processAreaId,
-    name,
-    description,
-    purpose,
-    whoItAffects,
-    linkedSystems,
-    tags,
-    riskRating,
-    riskNotes,
-    approvalRequired,
-    reviewFrequency,
-    executionSchedule,
-    steps,
-    ownerUserId,
-    editorUserIds,
-    viewerUserIds,
-    mode,
-    router,
-  ]);
-
-  useEffect(() => {
-    if (mode !== "edit" || !processId) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void persistDraft(processId, false);
-    }, 1200);
-
-    return () => window.clearTimeout(timer);
-  }, [
-    mode,
-    processId,
-    functionId,
-    processAreaId,
-    name,
-    description,
-    purpose,
-    whoItAffects,
-    linkedSystems,
-    tags,
-    riskRating,
-    riskNotes,
-    approvalRequired,
-    reviewFrequency,
-    executionSchedule,
-    steps,
-    ownerUserId,
-    editorUserIds,
-    viewerUserIds,
-    persistDraft,
-  ]);
-
-  async function syncStepsAndPeople(targetProcessId: string) {
+  const syncStepsAndPeople = useCallback(async (targetProcessId: string) => {
     const detail = await apiFetch<ProcessDetail>(`/processes/${targetProcessId}`);
     const currentVersionId = detail.currentVersion?.id;
     if (!currentVersionId) {
@@ -331,7 +227,106 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
         }),
       },
     );
-  }
+  }, [steps, ownerUserId, editorUserIds, viewerUserIds]);
+
+  const persistDraft = useCallback(async (targetProcessId: string, redirectAfterCreate: boolean) => {
+    setError(null);
+    setSaving(true);
+
+    try {
+      const payload = {
+        functionId,
+        processAreaId,
+        name: name.trim(),
+        description: description.trim() || undefined,
+        purpose: purpose.trim() || undefined,
+        whoItAffects: splitList(whoItAffects),
+        linkedSystems: splitList(linkedSystems),
+        tags: splitList(tags),
+        riskRating,
+        riskNotes: riskNotes.trim() || undefined,
+        approvalRequired,
+        reviewFrequency,
+        executionSchedule,
+      };
+
+      if (mode === "create" && redirectAfterCreate) {
+        const created = await apiFetch<{ id: string; processCode?: string }>(
+          "/processes",
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+        );
+        await syncStepsAndPeople(created.id);
+        setLastSavedAt(new Date());
+        router.push(`/processes/${created.id}`);
+        return;
+      }
+
+      await apiFetch(`/processes/${targetProcessId}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
+
+      await syncStepsAndPeople(targetProcessId);
+      setLastSavedAt(new Date());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save process.");
+    } finally {
+      setSaving(false);
+    }
+  }, [
+    functionId,
+    processAreaId,
+    name,
+    description,
+    purpose,
+    whoItAffects,
+    linkedSystems,
+    tags,
+    riskRating,
+    riskNotes,
+    approvalRequired,
+    reviewFrequency,
+    executionSchedule,
+    mode,
+    router,
+    syncStepsAndPeople,
+  ]);
+
+  useEffect(() => {
+    if (mode !== "edit" || !processId) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void persistDraft(processId, false);
+    }, 1200);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    mode,
+    processId,
+    functionId,
+    processAreaId,
+    name,
+    description,
+    purpose,
+    whoItAffects,
+    linkedSystems,
+    tags,
+    riskRating,
+    riskNotes,
+    approvalRequired,
+    reviewFrequency,
+    executionSchedule,
+    steps,
+    ownerUserId,
+    editorUserIds,
+    viewerUserIds,
+    persistDraft,
+  ]);
 
   async function onFinish() {
     if (!functionId || !processAreaId || !name.trim()) {
@@ -357,7 +352,9 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
         description="Build a governed SOP draft with location, governance, steps, and ownership."
         action={
           <div className="flex items-center gap-3">
-            <span className="text-xs text-text-muted">{autosaveLabel}</span>
+            {mode === "edit" ? (
+              <AutosaveIndicator lastSavedAt={lastSavedAt} />
+            ) : null}
             <PrimaryButton>
               <span onClick={saving ? undefined : onFinish}>
                 {saving ? "Saving…" : mode === "create" ? "Create process" : "Save & close"}
@@ -536,7 +533,12 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
             ) : null}
 
             {activeStep === 3 ? (
-              <ProcessStepBuilder steps={steps} onChange={setSteps} />
+              <ProcessStepBuilder
+                steps={steps}
+                processId={processId}
+                versionId={initial?.currentVersion?.id}
+                onChange={setSteps}
+              />
             ) : null}
 
             {activeStep === 4 ? (

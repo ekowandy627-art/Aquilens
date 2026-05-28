@@ -4,6 +4,7 @@ import { ClipboardList } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
+import { ListTableSkeleton } from "@/components/list-table-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { PrimaryButton } from "@/components/primary-button";
 import { apiFetch } from "@/lib/api-client";
@@ -90,6 +91,10 @@ export default function ProcessesPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
+        {loading ? (
+          <ListTableSkeleton showSidebar />
+        ) : (
+          <>
         <aside className="rounded-lg border border-border bg-white p-4">
           <div className="text-xs font-medium uppercase tracking-wide text-text-muted">
             Functions
@@ -147,16 +152,13 @@ export default function ProcessesPage() {
             </select>
           </div>
 
-          {loading ? (
-            <div className="rounded-lg border border-border bg-white p-6 text-sm text-text-muted">
-              Loading processes…
-            </div>
-          ) : filtered.length === 0 ? (
+          {filtered.length === 0 ? (
             <EmptyState
               icon={ClipboardList}
               title="No processes yet"
               description="Create your first SOP draft to start building your process repository."
               actionLabel={allowCreate ? "Create process" : undefined}
+              actionHref={allowCreate ? "/processes/new" : undefined}
             />
           ) : (
             <div className="rounded-lg border border-border bg-white">
@@ -203,6 +205,8 @@ export default function ProcessesPage() {
             </div>
           )}
         </section>
+          </>
+        )}
       </div>
     </>
   );

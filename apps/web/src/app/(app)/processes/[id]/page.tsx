@@ -7,6 +7,7 @@ import {
   ProcessStepBuilder,
   type DraftStep,
 } from "@/components/processes/process-step-builder";
+import { DetailPageSkeleton } from "@/components/list-table-skeleton";
 import { PageHeader } from "@/components/page-header";
 import { PrimaryButton } from "@/components/primary-button";
 import { apiFetch } from "@/lib/api-client";
@@ -20,18 +21,69 @@ import {
   formatExecutionSchedule,
   formatReviewFrequency,
 } from "@/lib/execution-schedule";
+import { AuditTrailTable } from "@/components/audit-trail-table";
 
-const tabs = ["Overview", "Steps", "Governance", "People", "Version History"] as const;
+const tabs = [
+  "Overview",
+  "Steps",
+  "Governance",
+  "People",
+  "Version History",
+  "Approval History",
+  "Audit",
+] as const;
+
+type ProcessVersion = {
+  id: string;
+  versionNumber: number;
+  status: string;
+  changeSummary?: string;
+  createdAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionComment?: string;
+  isCurrent?: boolean;
+};
+
+type ApprovalSummary = {
+  id: string;
+  status: string;
+  submittedBy?: string;
+  submittedAt: string;
+  decidedAt?: string;
+  comment?: string;
+  approverId?: string;
+};
 
 export default function ProcessDetailPage() {
   const params = useParams<{ id: string }>();
 
   const [data, setData] = useState<ProcessDetail | null>(null);
+  const [versions, setVersions] = useState<ProcessVersion[]>([]);
+  const [approvals, setApprovals] = useState<ApprovalSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [activeTab, setActiveTab] =
     useState<(typeof tabs)[number]>("Overview");
 
   const allowEdit = data?.access.canEdit ?? false;
+  const lifecycle = data?.lifecycle;
+
+  async function reload() {
+    const detail = await apiFetch<ProcessDetail>(`/processes/${params.id}`);
+    setData(detail);
+    if (activeTab === "Version History" || activeTab === "Approval History") {
+      const [versionRows, approvalRows] = await Promise.all([
+        apiFetch<ProcessVersion[]>(`/processes/${params.id}/versions`),
+        apiFetch<ApprovalSummary[]>(`/processes/${params.id}/approvals`),
+      ]);
+      setVersions(versionRows);
+      setApprovals(approvalRows);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +105,35 @@ export default function ProcessDetailPage() {
     };
   }, [params.id]);
 
+  useEffect(() => {
+    if (
+      activeTab !== "Version History" &&
+      activeTab !== "Approval History"
+    ) {
+      return;
+    }
+    void Promise.all([
+      apiFetch<ProcessVersion[]>(`/processes/${params.id}/versions`),
+      apiFetch<ApprovalSummary[]>(`/processes/${params.id}/approvals`),
+    ]).then(([versionRows, approvalRows]) => {
+      setVersions(versionRows);
+      setApprovals(approvalRows);
+    });
+  }, [activeTab, params.id]);
+
+  async function runAction(action: () => Promise<void>) {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await action();
+      await reload();
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Action failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const stepDrafts: DraftStep[] =
     data?.steps.map((step) => ({
       id: step.id,
@@ -62,6 +143,7 @@ export default function ProcessDetailPage() {
       responsibleRole: step.responsibleRole,
       stepType: step.stepType,
       evidenceRequired: step.evidenceRequired,
+      agents: step.agents,
     })) ?? [];
 
   return (
@@ -78,13 +160,32 @@ export default function ProcessDetailPage() {
             <Link href={`/processes/${params.id}/edit`}>
               <PrimaryButton>Edit</PrimaryButton>
             </Link>
+          ) : lifecycle?.canCreateVersion ? (
+            <PrimaryButton
+              disabled={busy}
+              onClick={() =>
+                void runAction(async () => {
+                  await apiFetch(`/processes/${params.id}/versions`, {
+                    method: "POST",
+                  });
+                })
+              }
+            >
+              Create New Version
+            </PrimaryButton>
           ) : undefined
         }
       />
 
+      {actionError ? (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {actionError}
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="rounded-lg border border-border bg-white p-6 text-sm text-text-muted">
-          Loading…
+          <DetailPageSkeleton />
         </div>
       ) : !data ? (
         <div className="rounded-lg border border-border bg-white p-6 text-sm text-text-muted">
@@ -158,6 +259,8 @@ export default function ProcessDetailPage() {
               <ProcessStepBuilder
                 steps={stepDrafts}
                 readOnly
+                processId={data.id}
+                versionId={data.currentVersion?.id}
                 onChange={() => undefined}
               />
             ) : null}
@@ -206,36 +309,118 @@ export default function ProcessDetailPage() {
 
             {activeTab === "Version History" ? (
               <div className="space-y-3">
-                <div className="rounded-md border border-border px-3 py-2">
-                  <div className="font-medium">
-                    v{data.currentVersion?.versionNumber ?? 1}
+                {versions.length === 0 ? (
+                  <div className="rounded-md border border-border px-3 py-2">
+                    <div className="font-medium">
+                      v{data.currentVersion?.versionNumber ?? 1}
+                    </div>
+                    <div className="mt-1 text-xs capitalize text-text-muted">
+                      {data.currentVersion?.status ?? data.status}
+                      {data.currentVersion ? " · current" : ""}
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs capitalize text-text-muted">
-                    {data.currentVersion?.status ?? data.status}
-                  </div>
-                </div>
-                <p className="text-xs text-text-muted">
-                  Additional versions and approval history arrive in Phase 5.
-                </p>
+                ) : (
+                  versions.map((version) => (
+                    <div
+                      key={version.id}
+                      className="rounded-md border border-border px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">v{version.versionNumber}</span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs capitalize ${statusBadgeClass(version.status)}`}
+                        >
+                          {version.status}
+                        </span>
+                      </div>
+                      {version.isCurrent ? (
+                        <p className="mt-1 text-xs text-brand-teal">Current version</p>
+                      ) : null}
+                      {version.changeSummary ? (
+                        <p className="mt-1 text-xs text-text-muted">
+                          {version.changeSummary}
+                        </p>
+                      ) : null}
+                      {version.rejectionComment ? (
+                        <p className="mt-1 text-xs text-red-600">
+                          Rejected: {version.rejectionComment}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))
+                )}
               </div>
+            ) : null}
+
+            {activeTab === "Approval History" ? (
+              <div className="space-y-3">
+                {approvals.length === 0 ? (
+                  <p className="text-text-muted">No approval decisions yet.</p>
+                ) : (
+                  approvals.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-md border border-border px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="capitalize font-medium">{item.status}</span>
+                        <span className="text-xs text-text-muted">
+                          {new Date(item.submittedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      {item.comment ? (
+                        <p className="mt-1 text-xs text-text-muted">{item.comment}</p>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : null}
+
+            {activeTab === "Audit" ? (
+              <AuditTrailTable
+                showHeader={false}
+                showFilters={false}
+                showExport={false}
+                filters={{ entityId: params.id, entityType: "Process" }}
+              />
             ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled
-              className="rounded-md border border-border px-3 py-2 text-sm text-text-muted"
-            >
-              Submit for Approval (Phase 5)
-            </button>
-            <button
-              type="button"
-              disabled
-              className="rounded-md border border-border px-3 py-2 text-sm text-text-muted"
-            >
-              Start Workflow (Phase 6)
-            </button>
+            {lifecycle?.canSubmit ? (
+              <PrimaryButton
+                disabled={busy}
+                onClick={() =>
+                  void runAction(async () => {
+                    await apiFetch(`/processes/${params.id}/submit`, {
+                      method: "POST",
+                    });
+                  })
+                }
+              >
+                Submit for Approval
+              </PrimaryButton>
+            ) : null}
+            {lifecycle?.canStartWorkflow ? (
+              <Link href={`/workflows/new?processId=${params.id}`}>
+                <button
+                  type="button"
+                  className="rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-bg"
+                >
+                  Start Workflow
+                </button>
+              </Link>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Only active SOPs can start workflows"
+                className="rounded-md border border-border px-3 py-2 text-sm text-text-muted"
+              >
+                Start Workflow
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -33,7 +33,7 @@ describe("auth guards", () => {
 
     await request(app.getHttpServer())
       .get("/api/v1/tenants/me")
-      .set("Authorization", "Bearer demo")
+      .set("Authorization", "Bearer demo:user-gis-admin")
       .expect(200)
       .expect((response) => {
         assert.equal(response.body.success, true);

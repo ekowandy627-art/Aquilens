@@ -1,0 +1,331 @@
+current_phase: phase-11-gis-demo-hardening
+
+phases:
+  - id: phase-0-app-shell
+    title: Phase 0 — App Shell + Design System
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Shell, routes, design tokens (pre-gate delivery).
+      files_changed: []
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test", "apps/web npm run build"]
+      results: "Retroactive — included in 75/75 API pass."
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive approval after full regression.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-1-security-kernel
+    title: Phase 1 — Multi-Tenant Security Kernel
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Auth, RLS, roles (pre-gate).
+      files_changed: []
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — auth.test.ts"]
+      results: Pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-2-tenant-scaffold
+    title: Phase 2 — Tenant Onboarding + Scaffold
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Onboarding wizard, function tree (pre-gate).
+      files_changed: []
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test"]
+      results: Pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-3-process-repository
+    title: Phase 3 — Process Repository + SOP Editor
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Process API, editor, migrations (pre-gate).
+      files_changed: []
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — processes.test.ts"]
+      results: Pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-35-process-access
+    title: Phase 3.5 — Process Access + Execution Schedule
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Per-process roles, execution schedule (pre-gate).
+      files_changed: []
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — phase35.test.ts"]
+      results: Pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-4-ai-sop-generation
+    title: Phase 4 — AI SOP Generation
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: SOP generate API + web flows (pre-gate).
+      files_changed: []
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — sop.test.ts"]
+      results: Pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-5-sop-approval
+    title: Phase 5 — SOP Approval Lifecycle
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Approvals API, queue, version history.
+      files_changed:
+        - apps/api/src/approvals/
+        - apps/web/src/app/(app)/approvals/
+        - supabase/migrations/202605270005_phase5_approval_lifecycle.sql
+      commands_run: ["npm test — approvals.test.ts"]
+    tester:
+      status: PASS
+      commands_run: ["npm test — approvals.test.ts (6 tests)"]
+      results: All pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive sign-off with integration tests.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-6-workflow-execution
+    title: Phase 6 — Workflow Execution
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Workflows module, sequential tasks, web UI.
+      files_changed:
+        - apps/api/src/workflows/
+        - apps/web/src/app/(app)/workflows/
+        - apps/web/src/app/(app)/my-tasks/
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["node --test-force-exit — workflows.test.ts (9/9)"]
+      results: All pass after listWorkflowAudit fix
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-7-evidence-capture
+    title: Phase 7 — Evidence Capture
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Evidence upload, required blocker, workflow UI.
+      files_changed:
+        - apps/api/src/evidence/
+        - supabase/migrations/202605270007_phase7_evidence.sql
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — evidence.test.ts"]
+      results: Pass with workflows suite
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-8-ai-agent-registry
+    title: Phase 8 — AI Agent Registry
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Agents CRUD, attestations, step linking.
+      files_changed:
+        - apps/api/src/agents/
+        - supabase/migrations/202605270008_phase8_ai_agents.sql
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — agents.test.ts (8/8)"]
+      results: All pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-9-notifications-dashboard
+    title: Phase 9 — Notifications + Dashboard
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Notifications, dashboard, escalation rules, bell.
+      files_changed:
+        - apps/api/src/notifications/
+        - supabase/migrations/202605270009_phase9_notifications.sql
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — notifications.test.ts, dashboard.test.ts"]
+      results: 12/12 pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-10-audit-export
+    title: Phase 10 — Audit Trail + Report Export
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Audit trail, CSV, PDF packs, guest access.
+      files_changed:
+        - apps/api/src/audit/
+        - apps/web/src/app/(app)/audit/
+        - apps/web/src/app/(app)/audit-packs/
+      commands_run: []
+    tester:
+      status: PASS
+      commands_run: ["npm test — audit.test.ts (9/9)"]
+      results: All pass
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Retroactive.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-11-gis-demo-hardening
+    title: Phase 11 — GIS Demo Hardening
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: seed:demo verified; root README, demo script doc, parallel testing protocol.
+      files_changed:
+        - README.md
+        - docs/PHASE11_DEMO_SCRIPT.md
+        - workflow/active-run.yaml
+        - workflow/runs/aquilens-build-plan/
+        - workflow/PARALLEL_SUBAGENT_TESTING.md
+        - .cursor/LESSONS_LEARNED.md
+      commands_run:
+        - npm run seed:demo
+    tester:
+      status: PASS
+      commands_run:
+        - npm run seed:demo
+        - npm test (75/75)
+        - apps/web npm run build
+      results: All pass; seed prints GIS summary; web build clean.
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: |
+        Phase 11 scope is polish + demo reliability. Core deliverables met:
+        seed:demo, 75 API tests, web build, README + demo script.
+        OUT OF SCOPE FOR CURRENT PHASE: Vercel/Railway deploy verification,
+        every BUILD_PLAN polish checkbox (loading skeletons, breadcrumbs) —
+        track as post-MVP hardening if needed.
+      amendments_added: []
+      bug_diagnosis: ""

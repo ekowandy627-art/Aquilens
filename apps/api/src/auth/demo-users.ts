@@ -17,6 +17,8 @@ const demoUsers: Record<string, AuthUser> = {
       "processes:read",
       "workflows:read",
       "agents:read",
+      "agents:create",
+      "agents:edit",
       "audit:read",
       "audit_packs:generate",
     ],
@@ -26,7 +28,13 @@ const demoUsers: Record<string, AuthUser> = {
     tenantId: "tenant-gis",
     email: "gis-head@aquilens.test",
     roles: ["Department Head"],
-    permissions: ["processes:read", "processes:approve", "workflows:read"],
+    permissions: [
+      "processes:read",
+      "processes:approve",
+      "workflows:read",
+      "agents:read",
+      "agents:edit",
+    ],
   },
   "user-gis-owner": {
     id: "user-gis-owner",
@@ -45,7 +53,7 @@ const demoUsers: Record<string, AuthUser> = {
     tenantId: "tenant-gis",
     email: "gis-staff@aquilens.test",
     roles: ["Staff"],
-    permissions: ["processes:read", "workflows:complete"],
+    permissions: ["processes:read", "workflows:read", "workflows:complete"],
   },
   "user-hospital-admin": {
     id: "user-hospital-admin",
@@ -59,17 +67,20 @@ const demoUsers: Record<string, AuthUser> = {
     tenantId: "tenant-hospital",
     email: "hospital-staff@aquilens.test",
     roles: ["Staff"],
-    permissions: ["processes:read", "workflows:complete"],
+    permissions: ["processes:read", "workflows:read", "workflows:complete"],
   },
 };
 
 export function resolveDemoUser(token: string): AuthUser {
-  if (token.startsWith("demo:")) {
-    const userId = token.slice("demo:".length);
-    return demoUsers[userId] ?? demoUsers["user-gis-admin"];
+  if (!token.startsWith("demo:")) {
+    throw new Error("Invalid demo token format.");
   }
-
-  return demoUsers["user-gis-admin"];
+  const userId = token.slice("demo:".length);
+  const user = demoUsers[userId];
+  if (!user) {
+    throw new Error("Unknown demo user token.");
+  }
+  return user;
 }
 
 const demoUserProfiles: Record<

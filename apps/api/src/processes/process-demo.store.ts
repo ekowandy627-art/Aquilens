@@ -1,4 +1,9 @@
 import { randomUUID } from "crypto";
+import {
+  approvalDemoStore,
+  resetApprovalDemoStore,
+} from "../approvals/approval-demo.store";
+import { buildGisRichProcessStore } from "./gis-rich-process.seed";
 import { generateProcessCode } from "./process-code";
 import type { ExecutionSchedule } from "./execution-schedule";
 import { defaultExecutionSchedule } from "./execution-schedule";
@@ -35,6 +40,11 @@ export type ProcessVersionRecord = {
   changeSummary?: string;
   createdBy?: string;
   createdAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  rejectionComment?: string;
 };
 
 export type ProcessRecord = {
@@ -73,27 +83,6 @@ type DemoScaffoldNames = {
   areaId: string;
   areaName: string;
 };
-
-const gisScaffold: DemoScaffoldNames[] = [
-  {
-    functionId: "fn-school-academics",
-    functionName: "Academics",
-    areaId: "area-school-academics-student-records",
-    areaName: "Student Records",
-  },
-  {
-    functionId: "fn-school-admissions",
-    functionName: "Admissions",
-    areaId: "area-school-admissions-enrolment",
-    areaName: "Enrolment",
-  },
-  {
-    functionId: "fn-school-finance",
-    functionName: "Finance",
-    areaId: "area-school-finance-fees-billing",
-    areaName: "Fees & Billing",
-  },
-];
 
 function seedProcess(
   tenantId: string,
@@ -175,95 +164,49 @@ function seedProcess(
   return { process, version, steps, people: input.people ?? [] };
 }
 
-function buildInitialStore() {
-  const processes = new Map<string, ProcessRecord>();
-  const versions = new Map<string, ProcessVersionRecord>();
-  const steps = new Map<string, ProcessStepRecord>();
-  const people = new Map<string, ProcessPersonRecord>();
+function cloneStepsForVersion(
+  tenantId: string,
+  sourceVersionId: string,
+  targetVersionId: string,
+  steps: Map<string, ProcessStepRecord>,
+) {
+  const sourceSteps = [...steps.values()]
+    .filter((step) => step.processVersionId === sourceVersionId)
+    .sort((a, b) => a.stepNumber - b.stepNumber);
 
-  const seeds = [
-    seedProcess("tenant-gis", gisScaffold[0]!, {
-      id: "proc-gis-attendance",
-      name: "Record Student Attendance",
-      status: "draft",
-      riskRating: "medium",
-      sequence: 1,
-      versionStatus: "draft",
-      createdBy: "user-gis-owner",
-      reviewFrequency: "quarterly",
-      executionSchedule: { kind: "daily", timezone: "Africa/Accra" },
-      people: [
-        { userId: "user-gis-owner", role: "owner" },
-        { userId: "user-gis-staff", role: "viewer" },
-      ],
-      steps: [
-        { title: "Teacher takes register", description: "Manual attendance capture" },
-        { title: "Discrepancies flagged to admin" },
-        { title: "Absence notified to parents" },
-      ],
-    }),
-    seedProcess("tenant-gis", gisScaffold[1]!, {
-      id: "proc-gis-enrolment",
-      name: "Enrol New Student",
-      status: "active",
-      riskRating: "high",
-      sequence: 1,
-      versionStatus: "active",
-      createdBy: "user-gis-owner",
-      reviewFrequency: "annually",
-      executionSchedule: { kind: "ad_hoc" },
-      people: [{ userId: "user-gis-owner", role: "owner" }],
-      steps: [
-        { title: "Receive application" },
-        { title: "Conduct interview", stepType: "approval" },
-        { title: "Confirm placement" },
-        { title: "Collect documentation", evidenceRequired: true },
-        { title: "Create student record in SIS" },
-      ],
-    }),
-    seedProcess("tenant-gis", gisScaffold[2]!, {
-      id: "proc-gis-fees",
-      name: "Issue Fee Invoice",
-      status: "draft",
-      riskRating: "low",
-      sequence: 1,
-      versionStatus: "draft",
-      createdBy: "user-gis-owner",
-      reviewFrequency: "annually",
-      executionSchedule: {
-        kind: "monthly",
-        dayOfMonth: 1,
-        timezone: "Africa/Accra",
-      },
-      people: [{ userId: "user-gis-owner", role: "owner" }],
-      steps: [
-        { title: "Generate invoice from fee schedule" },
-        { title: "Review invoice totals" },
-        { title: "Send invoice to guardian" },
-      ],
-    }),
-  ];
-
-  for (const seed of seeds) {
-    processes.set(seed.process.id, seed.process);
-    versions.set(seed.version.id, seed.version);
-    for (const step of seed.steps) {
-      steps.set(step.id, step);
-    }
-    for (const person of seed.people) {
-      people.set(`${seed.version.id}-${person.userId}-${person.role}`, {
-        id: `${seed.version.id}-${person.userId}-${person.role}`,
-        processVersionId: seed.version.id,
-        userId: person.userId,
-        role: person.role,
-      });
-    }
+  for (const step of sourceSteps) {
+    const cloned: ProcessStepRecord = {
+      ...step,
+      id: randomUUID(),
+      processVersionId: targetVersionId,
+    };
+    steps.set(cloned.id, cloned);
   }
-
-  return { processes, versions, steps, people };
 }
 
-const store = buildInitialStore();
+function clonePeopleForVersion(
+  sourceVersionId: string,
+  targetVersionId: string,
+  people: Map<string, ProcessPersonRecord>,
+) {
+  for (const person of people.values()) {
+    if (person.processVersionId !== sourceVersionId) {
+      continue;
+    }
+    const id = randomUUID();
+    people.set(id, {
+      ...person,
+      id,
+      processVersionId: targetVersionId,
+    });
+  }
+}
+
+function buildInitialStore() {
+  return buildGisRichProcessStore();
+}
+
+let store = buildInitialStore();
 
 export class ProcessDemoStore {
   listProcesses(tenantId: string, filters: ProcessListFilters = {}) {
@@ -465,6 +408,188 @@ export class ProcessDemoStore {
 
     return this.listPeople(versionId);
   }
+
+  resolveApprover(versionId: string) {
+    const approver = this.listPeople(versionId).find(
+      (person) => person.role === "approver",
+    );
+    return approver?.userId ?? "user-gis-head";
+  }
+
+  submitForApproval(tenantId: string, processId: string, submittedBy: string) {
+    const process = this.getProcess(tenantId, processId);
+    if (!process) {
+      return null;
+    }
+    const version = this.getVersion(process.currentVersionId);
+    if (!version) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    store.processes.set(processId, {
+      ...process,
+      status: "under_review",
+      updatedAt: now,
+    });
+    store.versions.set(version.id, { ...version, status: "under_review" });
+
+    const approval = approvalDemoStore.create({
+      tenantId,
+      entityType: "process_version",
+      entityId: version.id,
+      processId,
+      status: "pending",
+      approverId: this.resolveApprover(version.id),
+      submittedBy,
+      submittedAt: now,
+    });
+
+    return { process: store.processes.get(processId)!, approval };
+  }
+
+  approveVersion(
+    tenantId: string,
+    processId: string,
+    approverId: string,
+    comment?: string,
+  ) {
+    const process = this.getProcess(tenantId, processId);
+    if (!process) {
+      return null;
+    }
+    const version = this.getVersion(process.currentVersionId);
+    if (!version) {
+      return null;
+    }
+
+    const pending = approvalDemoStore
+      .listForProcess(processId)
+      .find(
+        (item) =>
+          item.entityId === version.id &&
+          item.status === "pending" &&
+          item.approverId === approverId,
+      );
+
+    if (!pending) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    store.processes.set(processId, {
+      ...process,
+      status: "active",
+      updatedAt: now,
+    });
+    store.versions.set(version.id, {
+      ...version,
+      status: "active",
+      approvedBy: approverId,
+      approvedAt: now,
+    });
+    approvalDemoStore.update(pending.id, {
+      status: "approved",
+      decidedAt: now,
+      comment,
+    });
+
+    return { process: store.processes.get(processId)!, approvalId: pending.id };
+  }
+
+  rejectVersion(
+    tenantId: string,
+    processId: string,
+    approverId: string,
+    comment: string,
+  ) {
+    const process = this.getProcess(tenantId, processId);
+    if (!process) {
+      return null;
+    }
+    const version = this.getVersion(process.currentVersionId);
+    if (!version) {
+      return null;
+    }
+
+    const pending = approvalDemoStore
+      .listForProcess(processId)
+      .find(
+        (item) =>
+          item.entityId === version.id &&
+          item.status === "pending" &&
+          item.approverId === approverId,
+      );
+
+    if (!pending) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    store.processes.set(processId, {
+      ...process,
+      status: "draft",
+      updatedAt: now,
+    });
+    store.versions.set(version.id, {
+      ...version,
+      status: "rejected",
+      rejectedBy: approverId,
+      rejectedAt: now,
+      rejectionComment: comment,
+    });
+    approvalDemoStore.update(pending.id, {
+      status: "rejected",
+      decidedAt: now,
+      comment,
+    });
+
+    return { process: store.processes.get(processId)!, approvalId: pending.id };
+  }
+
+  createNewVersion(tenantId: string, processId: string, createdBy: string) {
+    const process = this.getProcess(tenantId, processId);
+    if (!process || process.status !== "active") {
+      return null;
+    }
+
+    const currentVersion = this.getVersion(process.currentVersionId);
+    if (!currentVersion) {
+      return null;
+    }
+
+    const versions = this.listVersions(processId);
+    const nextNumber = (versions[0]?.versionNumber ?? 0) + 1;
+    const versionId = randomUUID();
+    const now = new Date().toISOString();
+
+    const newVersion: ProcessVersionRecord = {
+      id: versionId,
+      tenantId,
+      processId,
+      versionNumber: nextNumber,
+      status: "draft",
+      changeSummary: `Draft v${nextNumber}`,
+      createdBy,
+      createdAt: now,
+    };
+
+    store.versions.set(versionId, newVersion);
+    cloneStepsForVersion(tenantId, currentVersion.id, versionId, store.steps);
+    clonePeopleForVersion(currentVersion.id, versionId, store.people);
+
+    store.processes.set(processId, {
+      ...process,
+      status: "draft",
+      currentVersionId: versionId,
+      updatedAt: now,
+    });
+
+    return {
+      process: store.processes.get(processId)!,
+      version: newVersion,
+    };
+  }
 }
 
 export type ProcessListFilters = {
@@ -528,3 +653,8 @@ function matchesFilters(process: ProcessRecord, filters: ProcessListFilters) {
 }
 
 export const processDemoStore = new ProcessDemoStore();
+
+export function resetProcessDemoStore() {
+  resetApprovalDemoStore();
+  store = buildInitialStore();
+}

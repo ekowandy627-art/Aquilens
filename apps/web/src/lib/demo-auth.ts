@@ -91,7 +91,7 @@ export const demoRoles: DemoRole[] = [
     name: "Staff",
     description: "Complete assigned tasks and view own process work.",
     isSystem: true,
-    permissions: ["processes:read", "workflows:complete"],
+    permissions: ["processes:read", "workflows:read", "workflows:complete"],
   },
   {
     id: "role-hospital-admin",
@@ -107,7 +107,7 @@ export const demoRoles: DemoRole[] = [
     name: "Staff",
     description: "Complete assigned hospital tasks.",
     isSystem: true,
-    permissions: ["processes:read", "workflows:complete"],
+    permissions: ["processes:read", "workflows:read", "workflows:complete"],
   },
 ];
 

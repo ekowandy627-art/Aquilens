@@ -1,10 +1,17 @@
 import type { ExecutionSchedule, ProcessPersonRole } from "@/lib/execution-schedule";
+import type { LinkedAgent } from "@/lib/agents";
 
 export type ProcessAccess = {
   processRole?: ProcessPersonRole;
   canView: boolean;
   canEdit: boolean;
   canManagePeople: boolean;
+};
+
+export type ProcessLifecycle = {
+  canSubmit: boolean;
+  canCreateVersion: boolean;
+  canStartWorkflow: boolean;
 };
 
 export type ProcessListItem = {
@@ -39,6 +46,7 @@ export type ProcessStep = {
   controls?: string;
   notes?: string;
   evidenceRequired: boolean;
+  agents?: LinkedAgent[];
 };
 
 export type ProcessPerson = {
@@ -55,6 +63,7 @@ export type ProcessDetail = ProcessListItem & {
   governanceControls: unknown[];
   regulatoryReference?: string;
   access: ProcessAccess;
+  lifecycle?: ProcessLifecycle;
   currentVersion: {
     id: string;
     versionNumber: number;
