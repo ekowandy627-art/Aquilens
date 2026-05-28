@@ -14,6 +14,8 @@ import {
   type AuditFilters,
 } from "@/lib/audit";
 
+const EMPTY_AUDIT_FILTERS: AuditFilters = {};
+
 type AuditTrailTableProps = {
   filters?: AuditFilters;
   showFilters?: boolean;
@@ -24,7 +26,7 @@ type AuditTrailTableProps = {
 };
 
 export function AuditTrailTable({
-  filters: initialFilters = {},
+  filters: initialFilters = EMPTY_AUDIT_FILTERS,
   showFilters = true,
   showExport = true,
   showHeader = true,
@@ -38,9 +40,25 @@ export function AuditTrailTable({
   const [filters, setFilters] = useState<AuditFilters>(initialFilters);
   const [exporting, setExporting] = useState(false);
 
-  const mergedFilters = useMemo(
-    () => ({ ...filters, ...initialFilters }),
-    [filters, initialFilters],
+  const entityType = initialFilters.entityType ?? filters.entityType;
+  const entityId = initialFilters.entityId ?? filters.entityId;
+  const actorId = initialFilters.actorId ?? filters.actorId;
+  const eventType = initialFilters.eventType ?? filters.eventType;
+  const dateFrom = initialFilters.dateFrom ?? filters.dateFrom;
+  const dateTo = initialFilters.dateTo ?? filters.dateTo;
+  const cursor = initialFilters.cursor ?? filters.cursor;
+
+  const queryFilters = useMemo(
+    () => ({
+      entityType,
+      entityId,
+      actorId,
+      eventType,
+      dateFrom,
+      dateTo,
+      cursor,
+    }),
+    [entityType, entityId, actorId, eventType, dateFrom, dateTo, cursor],
   );
 
   useEffect(() => {
@@ -49,7 +67,7 @@ export function AuditTrailTable({
       setLoading(true);
       setError(null);
       try {
-        const data = await fetchAuditEvents(mergedFilters);
+        const data = await fetchAuditEvents(queryFilters);
         if (!cancelled) {
           setItems(data.items);
         }
@@ -69,12 +87,12 @@ export function AuditTrailTable({
     return () => {
       cancelled = true;
     };
-  }, [mergedFilters]);
+  }, [queryFilters]);
 
   async function handleExport() {
     setExporting(true);
     try {
-      const blob = await downloadAuditCsv(mergedFilters);
+      const blob = await downloadAuditCsv(queryFilters);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -116,7 +134,8 @@ export function AuditTrailTable({
               onChange={(event) =>
                 setFilters((current) => ({
                   ...current,
-                  entityType: event.target.value,
+                  entityType:
+                    event.target.value === "All" ? undefined : event.target.value,
                 }))
               }
             >

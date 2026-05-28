@@ -65,9 +65,10 @@ const apiBaseUrl =
 function buildQuery(filters: AuditFilters) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) {
-    if (value) {
-      params.set(key, value);
+    if (!value || (key === "entityType" && value === "All")) {
+      continue;
     }
+    params.set(key, value);
   }
   const query = params.toString();
   return query ? `?${query}` : "";
