@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run build --workspace=@aquilens/shared && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test:e2e": "playwright test",
