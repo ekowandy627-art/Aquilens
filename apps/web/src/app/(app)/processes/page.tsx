@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { PrimaryButton } from "@/components/primary-button";
 import { apiFetch } from "@/lib/api-client";
 import { useAuthContext } from "@/lib/use-auth-context";
+import { canManageTenantScaffold } from "@/lib/scaffolds";
 import {
   canCreateProcess,
   type ProcessListItem,
@@ -19,6 +20,7 @@ import {
 type TenantFunction = {
   id: string;
   name: string;
+  description?: string;
   areas: Array<{ id: string; name: string }>;
 };
 
@@ -26,6 +28,14 @@ export default function ProcessesPage() {
   const auth = useAuthContext();
   const permissions = auth.roles.flatMap((role) => role.permissions);
   const allowCreate = canCreateProcess(permissions);
+  const allowManageStructure = canManageTenantScaffold(permissions);
+  const isStaffOnly =
+    auth.roles.some((role) => role.name === "Staff") &&
+    !auth.roles.some((role) =>
+      ["Super Admin", "Department Head", "Process Owner", "Compliance Officer"].includes(
+        role.name,
+      ),
+    );
 
   const [processes, setProcesses] = useState<ProcessListItem[]>([]);
   const [functions, setFunctions] = useState<TenantFunction[]>([]);
@@ -76,11 +86,20 @@ export default function ProcessesPage() {
     });
   }, [processes, selectedFunctionId, statusFilter, riskFilter]);
 
+  const selectedFunction = useMemo(
+    () => functions.find((fn) => fn.id === selectedFunctionId) ?? null,
+    [functions, selectedFunctionId],
+  );
+
   return (
     <>
       <PageHeader
-        title="Processes"
-        description="Document, govern, review, and version each institutional process from one repository."
+        title={isStaffOnly ? "Procedures" : "Processes"}
+        description={
+          isStaffOnly
+            ? "Read assigned SOPs and open step-by-step tutorials."
+            : "Document, govern, review, and version each institutional process from one repository."
+        }
         action={
           allowCreate ? (
             <Link href="/processes/new">
@@ -96,8 +115,18 @@ export default function ProcessesPage() {
         ) : (
           <>
         <aside className="rounded-lg border border-border bg-white p-4">
-          <div className="text-xs font-medium uppercase tracking-wide text-text-muted">
-            Functions
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs font-medium uppercase tracking-wide text-text-muted">
+              Functions
+            </div>
+            {allowManageStructure ? (
+              <Link
+                href="/settings/structure"
+                className="text-xs font-medium text-brand-teal hover:underline"
+              >
+                Manage
+              </Link>
+            ) : null}
           </div>
           <div className="mt-3 space-y-1">
             <button
@@ -126,6 +155,11 @@ export default function ProcessesPage() {
               </button>
             ))}
           </div>
+          {selectedFunction?.description ? (
+            <p className="mt-4 border-t border-border pt-4 text-xs leading-5 text-text-muted">
+              {selectedFunction.description}
+            </p>
+          ) : null}
         </aside>
 
         <section className="space-y-4">

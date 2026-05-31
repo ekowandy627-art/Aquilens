@@ -38,6 +38,12 @@ describe("audit API", () => {
         assert.equal(response.body.success, true);
         assert.ok(response.body.data.items.length >= 10);
         assert.ok(
+          response.body.data.items.every(
+            (item: { eventType?: string }) =>
+              !item.eventType?.startsWith("auth."),
+          ),
+        );
+        assert.ok(
           response.body.data.items.some(
             (item: { eventType?: string }) => item.eventType === "process.approved",
           ),

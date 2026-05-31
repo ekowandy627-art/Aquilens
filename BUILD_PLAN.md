@@ -313,7 +313,7 @@ CREATE POLICY audit_tenant_read ON audit_log
 | Compliance Officer | Read all, generate audit packs — no create/edit |
 | Department Head | Full access scoped to assigned function |
 | Process Owner | Create/edit/submit own processes; start workflows |
-| Staff | Complete assigned tasks; log incidents; view own processes |
+| Staff | View assigned SOPs and tutorials; complete acknowledgements when required |
 | External Auditor | Scoped read-only; time-limited; view + download only |
 
 **Screens:**
@@ -731,7 +731,7 @@ POST   /api/v1/processes/:id/versions/:vId/steps/reorder       Reorder (body: [{
 - `/processes/:id` — Process detail
   - Header: name, process code, status badge, risk badge, owner
   - Tabs: Overview | Steps | Governance | People | Version History
-  - Action buttons: Edit | Submit for Approval (Phase 5) | Start Workflow (Phase 6)
+  - Action buttons: Edit | Submit for Approval (Phase 5) | Log Compliance Record (Phase 6)
 - `/processes/:id/edit` — Edit process (same layout as create, prepopulated)
 
 **Step builder (inside process create/edit):**
@@ -1287,9 +1287,9 @@ FIN-FEES-001 "Issue Fee Invoice"
 
 ---
 
-## Phase 6 — Workflow Execution
+## Phase 6 — Workflow Execution (Compliance Records)
 
-**Goal:** A process owner can start a workflow from an active SOP. Tasks are created, assigned, and executed sequentially. Each completion is recorded with a timestamp and actor.
+**Goal:** A process owner or compliance officer can start a **compliance record** from an active SOP (optional audit/compliance logging — not staff daily work). Tasks are created, assigned to owners/compliance roles, and executed sequentially. Each completion is recorded with a timestamp and actor.
 
 **Estimated effort:** 3 days
 
@@ -1369,7 +1369,7 @@ GET    /api/v1/workflows/:id/audit                Audit trail for this instance
 - `/workflows` — Workflow list
   - Tabs: Active | Completed | All
   - Columns: title, process, status, started by, started date, tasks done/total
-- `/workflows/new` — Start workflow modal (opened from process detail page)
+- `/workflows/new` — Start compliance record modal (opened from process detail page; labelled "Log Compliance Record" in UI)
   - Select process (pre-filled if opened from process page)
   - Add title, context (optional)
   - Assign users to steps (optional — can use role default)
@@ -1405,16 +1405,16 @@ workflow_tasks:
 
 Add to GIS seed:
 ```
-Workflow 1 — "Enrol New Student — Term 2 2025"
+Workflow 1 — "Enrol New Student — Term 2 Audit Sample"
   process: ADMN-ENR-001 (active)
   status: in_progress
-  started_by: gis-owner
+  started_by: gis-owner (compliance record — not staff daily work)
   tasks:
-    Task 1: "Receive and review application" — completed by gis-staff
-    Task 2: "Schedule admission interview" — in_progress (assigned to gis-staff)
-    Task 3: "Conduct interview and assessment" — pending
+    Task 1: "Receive and review application" — completed by gis-owner
+    Task 2: "Conduct interview" — in_progress (assigned to gis-head)
+    Task 3: "Safeguarding review" — pending (assigned to gis-compliance)
     Task 4: "Issue placement decision" — pending (approval step, assigned to gis-head)
-    Task 5: "Collect registration documents" — pending
+    Task 5: "Collect documentation" — pending (assigned to gis-owner, evidence required)
   
 Workflow 2 — "Term 1 Attendance Review"
   process: ACAD-STUD-001 (draft — should NOT allow starting a workflow from a non-active SOP)
@@ -1430,16 +1430,15 @@ Workflow 3 — "Fees Invoice — Q1 2025" (completed)
 
 ### User Journeys
 
-1. As `gis-owner`, I open the active "Enrol New Student" SOP and click "Start Workflow"
-2. I name the workflow "Enrol New Student — Term 2 2025", set context, and start
-3. System creates all tasks from the locked SOP version
-4. I see the workflow with Task 1 active, Tasks 2–5 pending
-5. As `gis-staff`, I open "My Tasks" and see Task 2 assigned to me
-6. I click into the task, mark it as in_progress, then complete with notes
-7. Task 3 unlocks automatically
-8. When Task 4 (approval) is reached, `gis-head` sees it in their approval queue
-9. `gis-head` approves — Task 5 unlocks
-10. After all tasks complete — workflow status changes to "Completed"
+1. As `gis-owner`, I open the active "Enrol New Student" SOP and click "Log Compliance Record"
+2. I name the record "Enrol New Student — Term 2 Audit Sample", set context, and start
+3. System creates all tasks from the locked SOP version (assigned to owners/compliance, not general staff)
+4. I see the compliance record with Task 1 active, Tasks 2–5 pending
+5. As `gis-staff`, I do **not** see workflow tasks — I see assigned SOPs and pending acknowledgements on my dashboard
+6. As `gis-owner` or `gis-compliance`, I complete tasks and attach evidence where required
+7. When Task 4 (approval) is reached, `gis-head` approves in the compliance record
+8. After all tasks complete — record status changes to "Completed"
+9. As `gis-staff`, I open the SOP tutorial and confirm acknowledgement when assigned
 
 ---
 
@@ -1447,13 +1446,13 @@ Workflow 3 — "Fees Invoice — Q1 2025" (completed)
 
 | Test | Expected Result |
 |---|---|
-| Open Active SOP, click "Start Workflow" | Workflow start modal opens |
-| Try to start workflow from Draft SOP | "Start Workflow" button hidden or disabled with tooltip |
+| Open Active SOP, click "Log Compliance Record" | Compliance record start modal opens |
+| Try to start compliance record from Draft SOP | Button hidden or disabled with tooltip |
 | Start workflow | Redirected to `/workflows/:id`, all tasks created |
 | Timeline | Task 1 shows as active, others as pending |
 | Complete Task 1 | Task 2 becomes active, Task 1 shows green checkmark |
 | Try to complete Task 3 before Task 2 | API returns 409 "Task N-1 is not complete" |
-| Navigate to `/my-tasks` as `gis-staff` | Assigned tasks visible |
+| Log in as `gis-staff` | Dashboard shows pending acknowledgements and assigned procedures — no workflow task inbox |
 | Approval task reached | Appears in approver's approval queue and `/my-tasks` |
 | Approve task | Task shows "Approved", next task unlocks |
 | Skip a task with reason | Task shows "Skipped", reason recorded |
@@ -1603,7 +1602,7 @@ Task 1 "Receive and review application" (completed):
 
 ### User Journeys
 
-1. As `gis-staff`, I open a workflow task that requires evidence
+1. As `gis-owner`, I open a compliance record task that requires evidence
 2. I see an orange banner: "Evidence required before you can complete this task"
 3. I drag and drop a PDF onto the drop zone — it uploads and appears as a card
 4. I add a note to the evidence item
@@ -1974,7 +1973,7 @@ GET    /api/v1/dashboard                   Dashboard summary for current user (r
   Returns aggregated data based on role:
   Super Admin: { openWorkflows, pendingApprovals, overdueItems, agentsNeedingAttestation, recentActivity }
   Process Owner: { myDraftProcesses, myPendingApprovals, myActiveWorkflows, myOverdueTasks }
-  Staff: { myTasks, overdueTaskCount, completedThisWeek }
+  Staff: { pendingAcknowledgements, assignedProcesses }
   Compliance Officer: { openIncidents, processesNeedingReview, auditPacksGenerated }
 ```
 
@@ -1998,14 +1997,14 @@ const NOTIFICATION_TRIGGERS = {
   - **Super Admin / Compliance Officer view:**
     - Summary cards: Open Workflows | Pending Approvals | Overdue Items | Agents Needing Attestation
     - Recent activity feed (last 10 audit events)
-    - Quick links: Start Workflow | New Process | Register Agent
+    - Quick links: Log Compliance Record | New Process | Register Agent
   - **Process Owner view:**
     - "Your Work" section: My Drafts | My Pending Approvals | My Active Workflows
     - "Overdue" section: overdue tasks in my workflows
   - **Staff view:** (simplified — this is the Two-Mode UI from the design principles)
-    - Large "My Tasks" list — just tasks assigned to them, nothing else
-    - Each task: workflow title, step title, due date, SLA indicator
-    - No governance, no admin, no sidebar modules they don't need
+    - Pending acknowledgements at the top — SOPs requiring read + confirm
+    - Assigned procedures below — browse/read SOPs and open step-by-step tutorials
+    - No workflow task inbox, no governance, no admin sidebar modules
 - Top nav — Notification bell:
   - Badge with unread count
   - Dropdown: last 10 notifications
@@ -2025,8 +2024,7 @@ const NOTIFICATION_TRIGGERS = {
 Add to GIS seed:
 ```
 Notifications:
-  gis-staff: "Task assigned: Schedule admission interview" — unread
-  gis-staff: "Task overdue: Collect registration documents" — unread
+  gis-staff: "Acknowledgement assigned: Enrol New Student v3" — unread
   gis-head: "Approval requested: Record Student Attendance SOP" — unread
   gis-owner: "SOP approved: Enrol New Student" — read
   gis-owner: "Attestation overdue: AI-001 Attendance Pattern Analyser" — unread
@@ -2051,7 +2049,7 @@ Escalation rules:
 2. I see 3 overdue items in the overdue card — click through to the list
 3. Notification bell shows badge count 3 — I click and see recent notifications
 4. I click a notification → navigated to the relevant record
-5. As `gis-staff`, login lands on a simplified "My Tasks" view — no sidebar modules for governance
+5. As `gis-staff`, login lands on a reference dashboard (acknowledgements + assigned procedures) — no governance sidebar modules
 6. As `gis-head`, login shows my approval queue and department workflows
 7. As `gis-admin`, I configure an escalation rule: SLA breach → notify Department Head after 24 hours
 
@@ -2062,9 +2060,9 @@ Escalation rules:
 | Test | Expected Result |
 |---|---|
 | Log in as `gis-admin` | Dashboard shows summary cards with real counts |
-| Log in as `gis-staff` | Dashboard shows only "My Tasks" — no admin panels visible |
+| Log in as `gis-staff` | Dashboard shows acknowledgements and assigned procedures — no admin panels visible |
 | Log in as `gis-head` | Dashboard shows pending approvals + department workflows |
-| Notification bell as `gis-staff` | Badge shows 2 (2 unread notifications) |
+| Notification bell as `gis-staff` | Badge shows 1 (acknowledgement assigned) |
 | Click notification | Navigates to the correct record |
 | Click "Mark all as read" | Badge disappears, all items show as read |
 | Refresh page | Read/unread state persists |
@@ -2072,7 +2070,7 @@ Escalation rules:
 | Create escalation rule | Rule saved with levels |
 | Toggle rule to inactive | Rule disabled, no longer fires |
 | Log in as `gis-staff`, navigate to `/settings/escalation` | 403 |
-| Real-time test: in another tab, assign a task to `gis-staff` | Notification bell badge increments without page refresh |
+| Real-time test: in another tab, assign an acknowledgement to `gis-staff` | Notification bell badge increments without page refresh |
 
 ---
 
@@ -2101,7 +2099,7 @@ Escalation rules:
 - [ ] Notification bell badge shows correct unread count
 - [ ] Clicking notification navigates to correct record
 - [ ] Mark as read works
-- [ ] Staff see simplified task-only view
+- [ ] Staff see simplified reference view (acknowledgements + procedures)
 - [ ] Escalation rule CRUD works
 - [ ] Real-time notification via WebSocket fires when task assigned
 - [ ] No TypeScript errors, no console errors
@@ -2333,12 +2331,12 @@ Completed Workflows (2):
   "Enrol New Student — Term 1, 2025/26" — all steps complete, evidence on 3 tasks
   "Safeguarding Review — October 2025" — complete, closed incident linked
 
-In-Progress Workflow (1):
-  "Enrol New Student — Term 2, 2025/26"
-    Tasks 1-2: complete
-    Task 3: in_progress (assigned to Grace)
+In-Progress Compliance Record (1):
+  "Enrol New Student — Term 2 Audit Sample"
+    Tasks 1-2: complete (owner/head)
+    Task 3: in_progress (assigned to compliance)
     Task 4: pending (approval — Dr. Ama)
-    Evidence on task 2: "application_pack.pdf"
+    Staff (Grace): pending acknowledgement on Enrol New Student v3 — no workflow tasks
 
 AI Agents (2):
   AI-001 "Attendance Pattern Analyser" — medium risk, attestation overdue
@@ -2383,7 +2381,7 @@ Notifications (seeded per user, realistic mix):
 2. (1 min) Show GIS function tree — Academics, Admissions etc.
 3. (2 min) Open ADMN-ENR-001 "Enrol New Student" — show approved SOP, steps, governance tab, version history
 4. (1 min) Show in-progress workflow — timeline, completed steps, Grace's task
-5. (1 min) Log in as Grace. Show "My Tasks" — one task assigned. Open task, upload fake evidence, complete task
+5. (1 min) Log in as Grace. Show reference dashboard — pending acknowledgement and assigned procedures. Open tutorial, confirm acknowledgement
 6. (1 min) Log in as Dr. Ama. Show notification bell (new task). Open approval task, approve
 7. (1 min) Log in as James. Show audit trail — see all recent events
 8. (1 min) Generate an audit pack — Academics function. Download PDF.

@@ -56,7 +56,7 @@ export default function StartWorkflowPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!processId || !title.trim()) {
-      setError("Select a process and enter a workflow title.");
+      setError("Select a process and enter a record title.");
       return;
     }
 
@@ -73,7 +73,7 @@ export default function StartWorkflowPage() {
       });
       router.push(`/workflows/${data.id}`);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Unable to start workflow");
+      setError(submitError instanceof Error ? submitError.message : "Unable to log compliance record");
     } finally {
       setBusy(false);
     }
@@ -82,8 +82,8 @@ export default function StartWorkflowPage() {
   return (
     <>
       <PageHeader
-        title="Start Workflow"
-        description="Create a workflow instance from an active SOP."
+        title="Log Compliance Record"
+        description="Create an optional audit or compliance log from an active SOP with step evidence."
       />
 
       {loading ? (
@@ -127,7 +127,7 @@ export default function StartWorkflowPage() {
           </label>
 
           <label className="block space-y-1 text-sm">
-            <span className="font-medium text-slate-900">Workflow title</span>
+            <span className="font-medium text-slate-900">Record title</span>
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -149,7 +149,7 @@ export default function StartWorkflowPage() {
 
           <div className="flex flex-wrap gap-2 pt-2">
             <PrimaryButton disabled={busy} type="submit">
-              {busy ? "Starting…" : "Start Workflow"}
+              {busy ? "Logging…" : "Log Compliance Record"}
             </PrimaryButton>
             <Link
               href={processId ? `/processes/${processId}` : "/workflows"}

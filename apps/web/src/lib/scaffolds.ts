@@ -19,6 +19,13 @@ export type ProcessAreaNode = {
   description?: string;
 };
 
+export function canManageTenantScaffold(permissions: string[]) {
+  return (
+    permissions.includes("*") ||
+    permissions.includes("tenant_scaffold:manage")
+  );
+}
+
 export type TenantProfile = {
   name: string;
   institutionType: InstitutionType;

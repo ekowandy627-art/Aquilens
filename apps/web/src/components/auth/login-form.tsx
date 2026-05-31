@@ -11,7 +11,13 @@ import {
   hasSupabaseBrowserEnv,
 } from "@/lib/supabase/client";
 
-export function LoginForm() {
+export function LoginForm({
+  tenantSlug,
+  tenantSuspended = false,
+}: {
+  tenantSlug?: string;
+  tenantSuspended?: boolean;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("gis-admin@aquilens.test");
   const [password, setPassword] = useState("Aquilens2024!");
@@ -21,6 +27,9 @@ export function LoginForm() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (tenantSuspended) {
+      return;
+    }
     setError(null);
     setLoading(true);
 
@@ -112,6 +121,7 @@ export function LoginForm() {
       </Button>
 
       <p className="text-xs leading-5 text-text-muted">
+        {tenantSlug ? `Tenant: ${tenantSlug}. ` : ""}
         {supabaseEnabled
           ? "Supabase auth is configured. Demo RBAC data remains available until Auth users are seeded."
           : "Demo mode: use any seeded email with password Aquilens2024!."}

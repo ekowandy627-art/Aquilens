@@ -5,6 +5,7 @@ import { beforeEach, describe, it } from "node:test";
 import { AppModule } from "../src/app.module";
 import { resetEscalationDemoStore } from "../src/notifications/escalation-demo.store";
 import { resetNotificationDemoStore } from "../src/notifications/notification-demo.store";
+import { resetAcknowledgementDemoStore, seedGisEnrolmentAcknowledgementDemo } from "../src/acknowledgements/acknowledgement-demo.store";
 import { resetProcessDemoStore } from "../src/processes/process-demo.store";
 
 describe("dashboard API", () => {
@@ -12,6 +13,8 @@ describe("dashboard API", () => {
     resetProcessDemoStore();
     resetNotificationDemoStore();
     resetEscalationDemoStore();
+    resetAcknowledgementDemoStore();
+    seedGisEnrolmentAcknowledgementDemo();
   });
 
   it("returns super admin summary for gis-admin", async () => {
@@ -37,7 +40,7 @@ describe("dashboard API", () => {
     await app.close();
   });
 
-  it("returns staff task-only summary for gis-staff", async () => {
+  it("returns staff reference summary for gis-staff", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -51,14 +54,9 @@ describe("dashboard API", () => {
       .expect(200)
       .expect((response) => {
         assert.equal(response.body.data.roleView, "staff");
-        assert.equal(response.body.data.myTasks.length, 2);
-        assert.equal(response.body.data.overdueTaskCount, 1);
-        assert.ok(
-          response.body.data.myTasks.some(
-            (task: { stepTitle: string }) =>
-              task.stepTitle === "Schedule admission interview",
-          ),
-        );
+        assert.ok(Array.isArray(response.body.data.pendingAcknowledgements));
+        assert.ok(Array.isArray(response.body.data.assignedProcesses));
+        assert.ok(response.body.data.assignedProcesses.length >= 1);
       });
 
     await app.close();

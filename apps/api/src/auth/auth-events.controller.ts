@@ -1,13 +1,10 @@
 import {
   Body,
   Controller,
-  Headers,
   HttpCode,
-  Inject,
   Post,
   UseGuards,
 } from "@nestjs/common";
-import { AuditService } from "../audit/audit.service";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
 import { AuthGuard } from "./auth.guard";
 import { CurrentUser } from "./current-user.decorator";
@@ -20,15 +17,10 @@ type FailedLoginDto = {
 
 @Controller("api/v1/auth/events")
 export class AuthEventsController {
-  constructor(@Inject(AuditService) private readonly audit: AuditService) {}
-
   @Post("login")
   @HttpCode(200)
   @UseGuards(AuthGuard)
-  async login(
-    @CurrentUser() user: AuthUser,
-    @Headers("user-agent") userAgent?: string,
-  ) {
+  async login(@CurrentUser() user: AuthUser) {
     const supabase = getSupabaseAdminClient();
 
     await supabase
@@ -37,75 +29,21 @@ export class AuthEventsController {
       .eq("id", user.id)
       .eq("tenant_id", user.tenantId);
 
-    await this.audit.log(user, {
-      eventType: "auth.login",
-      entityType: "User",
-      entityId: user.id,
-      entityName: user.email,
-      action: `${user.email} signed in`,
-      metadata: { userAgent },
-    });
-
     return { success: true, data: { logged: true } };
   }
 
   @Post("logout")
   @HttpCode(200)
   @UseGuards(AuthGuard)
-  async logout(
-    @CurrentUser() user: AuthUser,
-    @Headers("user-agent") userAgent?: string,
-  ) {
-    await this.audit.log(user, {
-      eventType: "auth.logout",
-      entityType: "User",
-      entityId: user.id,
-      entityName: user.email,
-      action: `${user.email} signed out`,
-      metadata: { userAgent },
-    });
-
+  async logout() {
     return { success: true, data: { logged: true } };
   }
 
+  /** Accepted for client compatibility; auth telemetry is not stored in the operational audit trail. */
   @Post("login-failed")
   @HttpCode(200)
-  async loginFailed(
-    @Body() dto: FailedLoginDto,
-    @Headers("user-agent") userAgent?: string,
-  ) {
-    const supabase = getSupabaseAdminClient();
-    const email = dto.email?.trim().toLowerCase();
-
-    if (!supabase || !email) {
-      return { success: true, data: { logged: false } };
-    }
-
-    const { data: profile } = await supabase
-      .from("users")
-      .select("id, tenant_id, email")
-      .eq("email", email)
-      .maybeSingle<{ id: string; tenant_id: string; email: string }>();
-
-    if (!profile) {
-      return { success: true, data: { logged: false } };
-    }
-
-    await supabase.from("audit_log").insert({
-      tenant_id: profile.tenant_id,
-      event_type: "auth.login_failed",
-      entity_type: "User",
-      entity_id: profile.id,
-      entity_name: profile.email,
-      actor_id: profile.id,
-      actor_name: profile.email,
-      action: `Failed sign-in attempt for ${profile.email}`,
-      metadata: {
-        reason: dto.reason ?? "Invalid credentials",
-        userAgent,
-      },
-    });
-
-    return { success: true, data: { logged: true } };
+  async loginFailed(@Body() dto: FailedLoginDto) {
+    void dto;
+    return { success: true, data: { logged: false } };
   }
 }

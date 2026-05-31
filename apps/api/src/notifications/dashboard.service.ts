@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import type { AuthUser } from "../auth/auth.types";
 import { approvalDemoStore } from "../approvals/approval-demo.store";
+import { acknowledgementDemoStore } from "../acknowledgements/acknowledgement-demo.store";
 import { processDemoStore } from "../processes/process-demo.store";
+import { isStaffOnlyReader } from "../processes/process-access";
 import { workflowDemoStore } from "../workflows/workflow-demo.store";
 import { taskDemoStore } from "./task-demo.store";
 
@@ -43,16 +45,19 @@ type DepartmentHeadDashboard = {
 
 type StaffDashboard = {
   roleView: "staff";
-  myTasks: Array<{
+  pendingAcknowledgements: Array<{
     id: string;
-    workflowId: string;
-    workflowTitle: string;
-    stepTitle: string;
-    dueDate: string;
-    slaStatus: string;
+    processId: string;
+    processName: string;
+    status: string;
+    dueDate?: string;
   }>;
-  overdueTaskCount: number;
-  completedThisWeek: number;
+  assignedProcesses: Array<{
+    id: string;
+    name: string;
+    processCode?: string;
+    status: string;
+  }>;
 };
 
 export type DashboardSummary =
@@ -186,20 +191,45 @@ export class DashboardService {
   }
 
   private staffSummary(user: AuthUser): StaffDashboard {
-    const myTasks = taskDemoStore.listForUser(user.tenantId, user.id);
+    const pendingAcknowledgements = acknowledgementDemoStore
+      .listPendingForUser(user.tenantId, user.id)
+      .map((assignment) => {
+        const campaign = acknowledgementDemoStore.getCampaign(assignment.campaignId);
+        const process = campaign
+          ? processDemoStore.getProcess(user.tenantId, campaign.processId)
+          : null;
+        return {
+          id: assignment.id,
+          processId: campaign?.processId ?? "",
+          processName: process?.name ?? "Procedure",
+          status: assignment.status,
+          dueDate: assignment.dueDate ?? campaign?.dueDate,
+        };
+      })
+      .filter((row) => row.processId);
+
+    const assignedProcesses = processDemoStore
+      .listProcesses(user.tenantId)
+      .filter((process) => {
+        if (!isStaffOnlyReader(user)) {
+          return true;
+        }
+        const people = processDemoStore.listPeople(process.currentVersionId);
+        return people.some(
+          (person) => person.userId === user.id && person.role === "viewer",
+        );
+      })
+      .map((process) => ({
+        id: process.id,
+        name: process.name,
+        processCode: process.processCode,
+        status: process.status,
+      }));
 
     return {
       roleView: "staff",
-      myTasks: myTasks.map((task) => ({
-        id: task.id,
-        workflowId: task.workflowId,
-        workflowTitle: task.workflowTitle,
-        stepTitle: task.stepTitle,
-        dueDate: task.dueDate,
-        slaStatus: task.slaStatus,
-      })),
-      overdueTaskCount: taskDemoStore.overdueCount(user.tenantId, user.id),
-      completedThisWeek: taskDemoStore.completedThisWeek(user.tenantId, user.id),
+      pendingAcknowledgements,
+      assignedProcesses,
     };
   }
 }

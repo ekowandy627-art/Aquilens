@@ -32,7 +32,7 @@ export const navItems = [
     icon: ListChecks,
   },
   {
-    label: "Workflows",
+    label: "Compliance Records",
     href: "/workflows",
     icon: ListChecks,
   },
@@ -53,6 +53,24 @@ export const navItems = [
   },
 ] as const;
 
+export const staffNavItems = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: Gauge,
+  },
+  {
+    label: "My Acknowledgements",
+    href: "/my-acknowledgements",
+    icon: BookOpenCheck,
+  },
+  {
+    label: "Procedures",
+    href: "/processes",
+    icon: ClipboardList,
+  },
+] as const;
+
 export const settingsNavItem = {
   label: "Settings",
   href: "/settings",
@@ -60,7 +78,7 @@ export const settingsNavItem = {
 } as const;
 
 export const navLabelBySegment = new Map(
-  [...navItems, settingsNavItem].map((item) => [
+  [...navItems, ...staffNavItems, settingsNavItem].map((item) => [
     item.href.replace(/^\//, ""),
     item.label,
   ]),
@@ -76,9 +94,7 @@ export function visibleNavItems(roleNames: string[]) {
     );
 
   if (isStaffOnly) {
-    return navItems.filter((item) =>
-      ["/dashboard", "/my-acknowledgements"].includes(item.href),
-    );
+    return [...staffNavItems];
   }
 
   return [...navItems];
@@ -97,7 +113,11 @@ export function titleFromPathname(pathname: string) {
     return "Notifications";
   }
 
-  const active = [...navItems, settingsNavItem].find((item) =>
+  if (pathname.includes("/tutorial")) {
+    return "Tutorial";
+  }
+
+  const active = [...navItems, ...staffNavItems, settingsNavItem].find((item) =>
     pathname.startsWith(item.href),
   );
 

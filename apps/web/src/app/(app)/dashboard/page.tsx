@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
+  BookOpenCheck,
   ClipboardCheck,
   ClipboardList,
   FileClock,
@@ -15,12 +16,17 @@ import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PrimaryButton } from "@/components/primary-button";
 import { EmptyState } from "@/components/empty-state";
-import { fetchDashboard, slaBadgeClass, type DashboardSummary } from "@/lib/dashboard";
+import {
+  acknowledgementStatusBadgeClass,
+  fetchDashboard,
+  type DashboardSummary,
+} from "@/lib/dashboard";
+import { statusBadgeClass } from "@/lib/processes";
 import { useAuthContext } from "@/lib/use-auth-context";
 
 function AdminDashboard({ data }: { data: Extract<DashboardSummary, { roleView: "super_admin" }> }) {
   const cards = [
-    { label: "Open workflows", value: data.openWorkflows, icon: Activity, href: "/workflows" },
+    { label: "Open compliance records", value: data.openWorkflows, icon: Activity, href: "/workflows" },
     {
       label: "Pending approvals",
       value: data.pendingApprovals,
@@ -91,53 +97,101 @@ function AdminDashboard({ data }: { data: Extract<DashboardSummary, { roleView: 
 
 function StaffDashboard({ data }: { data: Extract<DashboardSummary, { roleView: "staff" }> }) {
   return (
-    <section className="rounded-md border border-border bg-white">
-      <div className="border-b border-border px-6 py-5">
-        <h2 className="text-xl font-semibold text-slate-950">My Tasks</h2>
-        <p className="mt-1 text-sm text-text-muted">
-          {data.overdueTaskCount > 0
-            ? `${data.overdueTaskCount} overdue · ${data.completedThisWeek} completed this week`
-            : `${data.completedThisWeek} completed this week`}
-        </p>
-      </div>
-
-      {data.myTasks.length === 0 ? (
-        <div className="p-6">
-          <EmptyState
-            icon={ClipboardList}
-            title="No tasks assigned"
-            description="When a workflow step is assigned to you, it will appear here."
-          />
+    <div className="space-y-6">
+      <section className="rounded-md border border-border bg-white">
+        <div className="border-b border-border px-6 py-5">
+          <h2 className="text-xl font-semibold text-slate-950">Pending acknowledgements</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            Read the procedure tutorial and confirm you understand the published version.
+          </p>
         </div>
-      ) : (
-        <ul>
-          {data.myTasks.map((task) => (
-            <li
-              key={task.id}
-              className="flex flex-col gap-3 border-b border-border px-6 py-5 last:border-0 md:flex-row md:items-center md:justify-between"
-            >
-              <div>
-                <p className="text-base font-semibold text-slate-950">{task.stepTitle}</p>
-                <p className="mt-1 text-sm text-text-muted">{task.workflowTitle}</p>
-                <p className="mt-1 text-xs text-text-muted">
-                  Due {new Date(task.dueDate).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className={`inline-flex rounded-full px-2.5 py-1 text-xs capitalize ${slaBadgeClass(task.slaStatus)}`}
-                >
-                  {task.slaStatus.replace("_", " ")}
-                </span>
-                <Link href={`/workflows/${task.workflowId}`}>
-                  <PrimaryButton>Open task</PrimaryButton>
-                </Link>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+
+        {data.pendingAcknowledgements.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={BookOpenCheck}
+              title="Nothing pending"
+              description="When a new SOP version requires your acknowledgement, it will appear here."
+            />
+          </div>
+        ) : (
+          <ul>
+            {data.pendingAcknowledgements.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-col gap-3 border-b border-border px-6 py-5 last:border-0 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <p className="text-base font-semibold text-slate-950">{item.processName}</p>
+                  {item.dueDate ? (
+                    <p className="mt-1 text-xs text-text-muted">
+                      Due {new Date(item.dueDate).toLocaleDateString()}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs capitalize ${acknowledgementStatusBadgeClass(item.status)}`}
+                  >
+                    {item.status}
+                  </span>
+                  <Link
+                    href={`/processes/${item.processId}/tutorial?acknowledge=${item.id}`}
+                  >
+                    <PrimaryButton>Read &amp; confirm</PrimaryButton>
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-md border border-border bg-white">
+        <div className="border-b border-border px-6 py-5">
+          <h2 className="text-xl font-semibold text-slate-950">Your procedures</h2>
+          <p className="mt-1 text-sm text-text-muted">
+            SOPs assigned to you for reference — open the tutorial to follow step by step.
+          </p>
+        </div>
+
+        {data.assignedProcesses.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={ClipboardList}
+              title="No procedures assigned"
+              description="When you are listed on a process, it will appear here for reading."
+            />
+          </div>
+        ) : (
+          <ul>
+            {data.assignedProcesses.map((process) => (
+              <li
+                key={process.id}
+                className="flex flex-col gap-3 border-b border-border px-6 py-5 last:border-0 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <p className="text-base font-semibold text-slate-950">{process.name}</p>
+                  {process.processCode ? (
+                    <p className="mt-1 text-xs text-text-muted">{process.processCode}</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-1 text-xs capitalize ${statusBadgeClass(process.status)}`}
+                  >
+                    {process.status.replace("_", " ")}
+                  </span>
+                  <Link href={`/processes/${process.id}/tutorial`}>
+                    <PrimaryButton>Open tutorial</PrimaryButton>
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -155,7 +209,7 @@ function DepartmentHeadDashboard({
           href: "/approvals",
         },
         {
-          label: "Department workflows",
+          label: "Compliance records",
           value: data.departmentWorkflows,
           href: "/workflows",
         },
@@ -184,7 +238,7 @@ function ProcessOwnerDashboard({
       {[
         { label: "My drafts", value: data.myDraftProcesses },
         { label: "My pending approvals", value: data.myPendingApprovals },
-        { label: "My active workflows", value: data.myActiveWorkflows },
+        { label: "Active compliance records", value: data.myActiveWorkflows },
         { label: "My overdue tasks", value: data.myOverdueTasks },
       ].map((card) => (
         <article
@@ -263,10 +317,10 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        title={isStaff ? "My Tasks" : "Operational Control Room"}
+        title={isStaff ? "My Procedures" : "Operational Control Room"}
         description={
           isStaff
-            ? "Your assigned workflow steps — nothing else."
+            ? "Read assigned SOPs, follow tutorials, and confirm acknowledgements when required."
             : "Action-first home for processes, approvals, evidence, and governance work that needs attention."
         }
         action={

@@ -1,12 +1,18 @@
 import { apiFetch } from "@/lib/api-client";
 
-export type StaffTask = {
+export type StaffAcknowledgement = {
   id: string;
-  workflowId: string;
-  workflowTitle: string;
-  stepTitle: string;
-  dueDate: string;
-  slaStatus: string;
+  processId: string;
+  processName: string;
+  status: string;
+  dueDate?: string;
+};
+
+export type StaffAssignedProcess = {
+  id: string;
+  name: string;
+  processCode?: string;
+  status: string;
 };
 
 export type DashboardSummary =
@@ -44,9 +50,8 @@ export type DashboardSummary =
     }
   | {
       roleView: "staff";
-      myTasks: StaffTask[];
-      overdueTaskCount: number;
-      completedThisWeek: number;
+      pendingAcknowledgements: StaffAcknowledgement[];
+      assignedProcesses: StaffAssignedProcess[];
     };
 
 export async function fetchDashboard() {
@@ -103,4 +108,14 @@ export function slaBadgeClass(status: string) {
     return "bg-amber-50 text-amber-700";
   }
   return "bg-teal-50 text-teal-700";
+}
+
+export function acknowledgementStatusBadgeClass(status: string) {
+  if (status === "completed") {
+    return "bg-emerald-50 text-emerald-800";
+  }
+  if (status === "overdue") {
+    return "bg-red-50 text-red-700";
+  }
+  return "bg-amber-50 text-amber-800";
 }

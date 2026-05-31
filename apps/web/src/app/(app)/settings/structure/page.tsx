@@ -3,7 +3,7 @@ import { StructureEditor } from "@/components/structure-editor";
 
 export default function StructureSettingsPage() {
   return (
-    <PermissionGate permission="settings:edit">
+    <PermissionGate permission="tenant_scaffold:manage">
       <StructureEditor />
     </PermissionGate>
   );

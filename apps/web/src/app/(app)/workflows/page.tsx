@@ -33,11 +33,11 @@ export default function WorkflowsPage() {
   return (
     <>
       <PageHeader
-        title="Workflows"
-        description="Start and track process instances, task completion, approvals, and evidence capture."
+        title="Compliance Records"
+        description="Optional audit and compliance logs with step evidence — started by owners or compliance, not staff daily work."
         action={
           <Link href="/workflows/new">
-            <PrimaryButton>Start Workflow</PrimaryButton>
+            <PrimaryButton>Log Compliance Record</PrimaryButton>
           </Link>
         }
       />
@@ -68,9 +68,9 @@ export default function WorkflowsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={ListChecks}
-          title="No workflows yet"
-          description="Workflow instances will appear after an active SOP is started by a process owner."
-          actionLabel="Start workflow"
+          title="No compliance records yet"
+          description="Compliance records appear when a process owner logs an audit sample or spot check from an active SOP."
+          actionLabel="Log compliance record"
           actionHref="/workflows/new"
         />
       ) : (

@@ -33,8 +33,9 @@ test.describe("Phase 15 acknowledgements UI", () => {
 
     await signInAs(page, "gis-staff@aquilens.test");
     await page.goto(`/my-acknowledgements/${assignmentId}`);
+    await page.waitForURL(`**/processes/**/tutorial?acknowledge=${assignmentId}`);
     await waitForAppReady(page);
-    await expect(page.getByTestId("ack-sop-read-view")).toBeVisible();
+    await expect(page.getByTestId("process-tutorial")).toBeVisible();
     await page
       .getByRole("button", { name: "Confirm acknowledgement" })
       .click();

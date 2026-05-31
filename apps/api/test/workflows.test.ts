@@ -30,7 +30,7 @@ describe("workflows API", () => {
         assert.ok(
           response.body.data.some(
             (item: { title?: string }) =>
-              item.title === "Enrol New Student — Term 2, 2025/26",
+              item.title === "Enrol New Student — Term 2 Audit Sample",
           ),
         );
       });
@@ -100,7 +100,7 @@ describe("workflows API", () => {
 
     await request(app.getHttpServer())
       .post(`/api/v1/workflows/workflow-gis-enrolment-t2/tasks/${task5Id}/complete`)
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-owner")
       .send({ notes: "Should fail — prior step still open" })
       .expect(409)
       .expect((response) => {
@@ -122,12 +122,12 @@ describe("workflows API", () => {
     const task4Id = "workflow-gis-enrolment-t2-task-4";
 
     await request(app.getHttpServer())
-      .post(`/api/v1/workflows/workflow-gis-enrolment-t2/tasks/${task3Id}/complete`)
-      .set("Authorization", "Bearer demo:user-gis-staff")
-      .send({ notes: "Safeguarding review complete" })
+      .post(`/api/v1/workflows/workflow-gis-enrolment-t2/tasks/${task3Id}/approve`)
+      .set("Authorization", "Bearer demo:user-gis-head")
+      .send({ notes: "Safeguarding review approved" })
       .expect(201)
       .expect((response) => {
-        assert.equal(response.body.data.status, "completed");
+        assert.equal(response.body.data.status, "approved");
       });
 
     await request(app.getHttpServer())
@@ -145,7 +145,7 @@ describe("workflows API", () => {
     await app.close();
   });
 
-  it("staff cannot complete tasks not assigned to them", async () => {
+  it("staff cannot complete compliance record tasks", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -154,18 +154,11 @@ describe("workflows API", () => {
     await app.init();
 
     const task3Id = "workflow-gis-enrolment-t2-task-3";
-    const task4Id = "workflow-gis-enrolment-t2-task-4";
 
     await request(app.getHttpServer())
-      .post(`/api/v1/workflows/workflow-gis-enrolment-t2/tasks/${task3Id}/complete`)
+      .post(`/api/v1/workflows/workflow-gis-enrolment-t2/tasks/${task3Id}/approve`)
       .set("Authorization", "Bearer demo:user-gis-staff")
-      .send({ notes: "Safeguarding review complete" })
-      .expect(201);
-
-    await request(app.getHttpServer())
-      .post(`/api/v1/workflows/workflow-gis-enrolment-t2/tasks/${task4Id}/complete`)
-      .set("Authorization", "Bearer demo:user-gis-staff")
-      .send({ notes: "Not my approval task" })
+      .send({ notes: "Staff should not approve compliance tasks" })
       .expect(403);
 
     await app.close();
@@ -193,7 +186,7 @@ describe("workflows API", () => {
     await app.close();
   });
 
-  it("lists my tasks for assigned user", async () => {
+  it("lists my tasks for assigned department head", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -203,7 +196,7 @@ describe("workflows API", () => {
 
     await request(app.getHttpServer())
       .get("/api/v1/workflows/my-tasks")
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-head")
       .expect(200)
       .expect((response) => {
         assert.equal(response.body.success, true);
@@ -214,6 +207,22 @@ describe("workflows API", () => {
           ),
         );
       });
+
+    await app.close();
+  });
+
+  it("returns 403 for staff accessing my-tasks", async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    const app = moduleRef.createNestApplication();
+    await app.init();
+
+    await request(app.getHttpServer())
+      .get("/api/v1/workflows/my-tasks")
+      .set("Authorization", "Bearer demo:user-gis-staff")
+      .expect(403);
 
     await app.close();
   });

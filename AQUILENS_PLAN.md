@@ -362,13 +362,13 @@ The Data Governance module (automated data quality monitoring — duplicate dete
 
 ### 10.1 Purpose
 
-Workflows serve three purposes in Aquilens:
+Aquilens is a **system of reference and governance**, not a daily workstation. Operational work happens in systems of record (SIS, EMR, ERP, etc.). Workflows in Aquilens serve three purposes:
 
-1. **Process Execution** — running an instance of a documented process, assigned to real people, with each step tracked, evidence captured, and a full audit trail produced
-2. **Governance Actions** — routing approvals, reviews, and attestations to the right people and tracking them to completion
+1. **Governance Actions** — routing SOP approvals, access reviews, agent attestations, and similar sign-offs to the right people
+2. **Optional Compliance Records** — when an institution needs instance-level proof (audit samples, spot checks, high-risk cases), process owners or compliance officers log a compliance record with step evidence; this is not the default staff daily workflow
 3. **Incident Resolution** — routing a logged breach or non-conformance through root cause analysis, corrective action, and formal closure
 
-Aquilens does not automate every step. It **records** every step. Processes are hybrid — some steps happen in systems, others happen physically. The workflow engine accommodates both.
+Aquilens does not automate operational steps. It **records governance and compliance evidence** when institutions choose to log it. Staff primarily **read SOPs, follow generated tutorials, and acknowledge** published versions when required.
 
 ---
 
@@ -760,7 +760,7 @@ A user can hold multiple roles. Permissions are additive — a user gets the uni
 | **Compliance Officer** | Read-only access to the entire tenant. Can generate and download audit packs. Cannot create or edit any records. |
 | **Department Head** | Full access scoped to their assigned Function(s). Can approve processes, manage workflow instances, view incidents within their Function. |
 | **Process Owner** | Can create, edit, version, and submit processes they own for approval. Can start workflow instances for their processes. Receives review and attestation tasks. |
-| **Staff (Process Participant)** | Can complete workflow tasks assigned to them. Can view processes and SOPs they are listed as users on. Can log incidents. Cannot create or edit processes. |
+| **Staff (Process Participant)** | Can view assigned SOPs and step-by-step tutorials. Can complete acknowledgement assignments when a published version requires it. Cannot create, edit, or approve processes. Operational workflow tasks are not part of the default staff experience. |
 | **External Auditor (Guest)** | Scoped read-only access. Time-limited. Defined at the point of access grant. Cannot take any action — view and download only. |
 
 ---
@@ -994,7 +994,7 @@ Aquilens is the **operational control layer** above existing systems — not ano
 | # | Principle | What It Means in Practice |
 |---|---|---|
 | 1 | **Action-First, Not Data-First** | Home screen answers *"What needs attention today?"* — not *"Here are some metrics."* Every screen leads with what to do, not what to look at. |
-| 2 | **Two-Mode UI** | Staff see only tasks ("Approve this. Upload that. Confirm completion."). Governance/admin see the full platform. Same database, radically different surface. Default mode is driven by role. |
+| 2 | **Two-Mode UI** | Staff see a reference surface: assigned procedures, tutorials, and pending acknowledgements. Governance/admin see the full platform. Same database, radically different surface. Default mode is driven by role. |
 | 3 | **Governance Invisible Until Needed** | Process owners, staff, and approvers never see escalation rules, risk matrices, or governance controls in their day-to-day flow. The heavy machinery sits behind admin screens. |
 | 4 | **AI Assistive, Never Autonomous** | Every AI suggestion is visually marked, explains its reasoning, and is rejectable. AI never auto-publishes. Every AI action is logged in the audit trail. Customer data is never used to train models. |
 | 5 | **Inline Evidence Capture** | Evidence is captured as part of completing a task — drag-drop, photo, voice note — never as a separate workflow. Required vs optional evidence is visually obvious. |

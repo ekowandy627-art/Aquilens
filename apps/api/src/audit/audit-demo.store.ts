@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { isOperationalAuditEvent } from "./audit-operational";
 
 export type AuditLogRecord = {
   id: string;
@@ -60,18 +61,6 @@ function buildInitialAuditLog(): AuditLogRecord[] {
   const tenantId = "tenant-gis";
 
   return [
-    seedEvent({
-      id: "audit-auth-login-admin",
-      tenantId,
-      timestamp: "2026-05-01T08:00:00.000Z",
-      eventType: "auth.login",
-      entityType: "User",
-      entityId: "user-gis-admin",
-      entityName: actorNames["user-gis-admin"],
-      actorId: "user-gis-admin",
-      actorName: actorNames["user-gis-admin"],
-      action: "Signed in to Aquilens",
-    }),
     seedEvent({
       id: "audit-process-created-attendance",
       tenantId,
@@ -318,6 +307,7 @@ export class AuditDemoStore {
     const limit = filters.limit ?? 50;
     const sorted = entries
       .filter((entry) => entry.tenantId === tenantId)
+      .filter((entry) => isOperationalAuditEvent(entry.eventType))
       .filter((entry) => matchesFilters(entry, filters))
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 

@@ -94,6 +94,16 @@ export function OnboardingWizard() {
     );
   }
 
+  function updateFunctionDescription(functionId: string, nextDescription: string) {
+    setFunctions((current) =>
+      current.map((fn) =>
+        fn.id === functionId
+          ? { ...fn, description: nextDescription || undefined }
+          : fn,
+      ),
+    );
+  }
+
   function updateAreaName(
     functionId: string,
     areaId: string,
@@ -349,6 +359,7 @@ export function OnboardingWizard() {
             onAddFunction={addFunction}
             onRemoveFunction={removeFunction}
             onUpdateFunctionName={updateFunctionName}
+            onUpdateFunctionDescription={updateFunctionDescription}
             onAddArea={addArea}
             onRemoveArea={removeArea}
             onUpdateAreaName={updateAreaName}
@@ -454,6 +465,11 @@ function ScaffoldSummary({
         {functions.map((fn) => (
           <article key={fn.id} className="rounded-md border border-border p-4">
             <h2 className="text-sm font-semibold text-slate-950">{fn.name}</h2>
+            {fn.description ? (
+              <p className="mt-2 text-sm leading-6 text-text-muted">
+                {fn.description}
+              </p>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               {fn.areas.map((area) => (
                 <span
@@ -476,6 +492,7 @@ function ScaffoldEditor({
   onAddFunction,
   onRemoveFunction,
   onUpdateFunctionName,
+  onUpdateFunctionDescription,
   onAddArea,
   onRemoveArea,
   onUpdateAreaName,
@@ -484,6 +501,7 @@ function ScaffoldEditor({
   onAddFunction: () => void;
   onRemoveFunction: (functionId: string) => void;
   onUpdateFunctionName: (functionId: string, nextName: string) => void;
+  onUpdateFunctionDescription: (functionId: string, nextDescription: string) => void;
   onAddArea: (functionId: string) => void;
   onRemoveArea: (functionId: string, areaId: string) => void;
   onUpdateAreaName: (
@@ -514,14 +532,26 @@ function ScaffoldEditor({
         {functions.map((fn) => (
           <article key={fn.id} className="rounded-md border border-border p-4">
             <div className="flex gap-3">
-              <input
-                value={fn.name}
-                aria-label={`${fn.name} function name`}
-                onChange={(event) =>
-                  onUpdateFunctionName(fn.id, event.target.value)
-                }
-                className="h-10 min-w-0 flex-1 rounded-md border border-border px-3 text-sm font-medium text-slate-950"
-              />
+              <div className="min-w-0 flex-1 space-y-3">
+                <input
+                  value={fn.name}
+                  aria-label={`${fn.name} function name`}
+                  onChange={(event) =>
+                    onUpdateFunctionName(fn.id, event.target.value)
+                  }
+                  className="h-10 w-full rounded-md border border-border px-3 text-sm font-medium text-slate-950"
+                />
+                <textarea
+                  value={fn.description ?? ""}
+                  aria-label={`${fn.name} function description`}
+                  onChange={(event) =>
+                    onUpdateFunctionDescription(fn.id, event.target.value)
+                  }
+                  rows={2}
+                  placeholder="Brief description of what this function does"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm leading-6"
+                />
+              </div>
               <Button
                 type="button"
                 variant="ghost"

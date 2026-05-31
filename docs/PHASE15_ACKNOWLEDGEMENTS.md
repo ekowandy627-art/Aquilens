@@ -1,6 +1,6 @@
 # Phase 15 — Staff acknowledgement
 
-Staff read and confirm published SOP versions. Process owners track completion on the process detail **Acknowledgements** tab.
+Staff read procedure tutorials and confirm published SOP versions. Process owners track completion on the process detail **Acknowledgements** tab.
 
 ## API (demo mode)
 
@@ -18,7 +18,7 @@ Publishing with `acknowledgementRequired: true` creates a campaign and assigns G
 ## Web
 
 - `/my-acknowledgements` — staff pending list
-- `/my-acknowledgements/[assignmentId]` — version-scoped read-only SOP + confirm
+- `/my-acknowledgements/[assignmentId]` — redirects to `/processes/[id]/tutorial?acknowledge=…` for read + confirm
 - Process detail → **Acknowledgements** tab — campaigns, assignee status, completion %
 
 ## Demo users

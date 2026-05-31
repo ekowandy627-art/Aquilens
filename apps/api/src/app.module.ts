@@ -14,6 +14,7 @@ import { TenantsController } from "./tenants/tenants.controller";
 import { DemoController } from "./demo/demo.controller";
 import { StandardsModule } from "./standards/standards.module";
 import { AcknowledgementsModule } from "./acknowledgements/acknowledgements.module";
+import { InternalModule } from "./internal/internal.module";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { AcknowledgementsModule } from "./acknowledgements/acknowledgements.modu
     EvidenceModule,
     NotificationsModule,
     AgentsModule,
+    InternalModule,
   ],
   controllers: [AppController, TenantsController, DemoController],
 })

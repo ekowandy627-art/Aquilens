@@ -63,6 +63,12 @@ function buildInitialState(): GuidanceStoreState {
 let state = buildInitialState();
 
 export class GuidanceDemoStore {
+  listAllPacks() {
+    return [...state.packs.values()].toSorted((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }
+
   listActivePacks(filters?: { sector?: string; jurisdiction?: string }) {
     let packs = [...state.packs.values()].filter((pack) => pack.isActive);
 

@@ -1,4 +1,4 @@
-current_phase: phase-11-gis-demo-hardening
+current_phase: phase-16-alignment-dashboard
 
 phases:
   - id: phase-0-app-shell
@@ -327,5 +327,300 @@ phases:
         OUT OF SCOPE FOR CURRENT PHASE: Vercel/Railway deploy verification,
         every BUILD_PLAN polish checkbox (loading skeletons, breadcrumbs) —
         track as post-MVP hardening if needed.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-12-product-language
+    title: Phase 12 — Product Language & Legal Framing
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: |
+        Shared legal disclaimer + alignment status labels; LegalDisclaimer on audit-packs and onboarding confirm;
+        PDF legal footer + notice section; ROLE_PERMISSION_MATRIX; product-language script; Playwright P12 suite;
+        AuthProvider + demo cookie fallback; Supabase auth timeouts.
+      files_changed:
+        - packages/shared/src/legal.ts
+        - packages/shared/src/alignment-status.ts
+        - apps/api/src/audit/audit-pack-pdf.ts
+        - apps/api/test/audit-pack-legal.test.ts
+        - apps/web/src/components/legal-disclaimer.tsx
+        - apps/web/src/lib/auth-provider.tsx
+        - apps/web/src/lib/demo-auth.ts
+        - apps/web/e2e/phase12-product-language.spec.ts
+        - apps/web/playwright.ci.config.ts
+        - docs/ROLE_PERMISSION_MATRIX.md
+        - docs/PHASE12_PRODUCT_LANGUAGE.md
+      commands_run:
+        - npm run test:shared
+        - npm run check:product-language
+        - npm run test:api (77/77)
+        - npm --prefix apps/web run build
+    tester:
+      status: PASS
+      commands_run:
+        - npm run test:shared (6/6)
+        - npm run check:product-language
+        - npm run test:api (77/77)
+        - npm --prefix apps/web run build
+        - PLAYWRIGHT_BASE_URL=http://127.0.0.1:3010 npx playwright test --config apps/web/playwright.ci.config.ts (3/3)
+      results: All Phase 12 automated checks pass after AuthProvider + E2E base URL fix.
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: |
+        Plan deliverables met: shared legal + alignment labels, UI disclaimer, PDF footer, ROLE_PERMISSION_MATRIX,
+        product-language script, Playwright P12-UI-01..05. P12-A-01/02 PDF tests pass. P12-UI-06 via onboarding confirm step.
+        P12-W-01 optional Vitest not added; covered by E2E disclaimer assertion. Auth fix is in-scope hardening for demo/E2E parity.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-13-sop-control
+    title: Phase 13 — SOP Control Enrichment
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: |
+        Phase 13 complete: SOP control fields, approve→approved / publish→active, publish/archive/documents APIs,
+        web Control/Documents tabs + publish dialog + editor governance fields, docs/PHASE13_SOP_CONTROL.md,
+        hybrid demo bearer (ALLOW_DEMO_BEARER + getSupabaseForUser), demo reset endpoint, Playwright P13 (4/4).
+      files_changed:
+        - supabase/migrations/202606010001_phase13_sop_control.sql
+        - apps/api/src/approvals/process-lifecycle.ts
+        - apps/api/src/approvals/approvals.service.ts
+        - apps/api/src/processes/processes.service.ts
+        - apps/api/src/processes/processes.controller.ts
+        - apps/api/src/processes/process-demo.store.ts
+        - apps/api/src/processes/gis-rich-process.seed.ts
+        - apps/api/src/auth/auth.guard.ts
+        - apps/api/src/auth/demo-users.ts
+        - apps/api/src/demo/demo-data-mode.ts
+        - apps/api/src/demo/demo.controller.ts
+        - apps/api/src/main.ts
+        - apps/api/test/process-publish.test.ts
+        - apps/api/test/process-lifecycle.test.ts
+        - apps/api/test/process-documents.test.ts
+        - apps/web/src/lib/processes.ts
+        - apps/web/src/components/processes/publish-process-dialog.tsx
+        - apps/web/src/components/processes/process-documents-panel.tsx
+        - apps/web/src/app/(app)/processes/[id]/page.tsx
+        - apps/web/src/components/processes/process-editor.tsx
+        - apps/web/e2e/process-publish.spec.ts
+        - apps/web/e2e/helpers/demo-session.ts
+        - docs/PHASE13_SOP_CONTROL.md
+      commands_run:
+        - npm run test:api (89/89)
+        - npm run check:product-language
+        - apps/web npm run build
+        - PLAYWRIGHT_BASE_URL=http://127.0.0.1:3010 npx playwright test e2e/process-publish.spec.ts (4/4)
+    tester:
+      status: PASS
+      commands_run:
+        - npm run test:api (89/89 pass)
+        - npm run check:product-language (pass)
+        - PLAYWRIGHT_BASE_URL=http://127.0.0.1:3010 npx playwright test --config apps/web/playwright.ci.config.ts e2e/process-publish.spec.ts (4/4)
+      results: All Phase 13 API and Playwright checks pass.
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: |
+        Approve/publish split, lifecycle guards, documents upload, and web UI match PRD §12.3.
+        docs/PHASE13_SOP_CONTROL.md documents flows and local E2E prerequisites (ALLOW_DEMO_BEARER, CORS, reset-gis).
+        Hybrid demo routing enables Playwright with Supabase env present — required for local dev parity.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-14-standards-library
+    title: Phase 14 — Standards Library & Tenant Selection
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: |
+        MVP guidance library (6 packs), standards module API, tenant selections + recommendations,
+        function/process guidance links, organisation profile, onboarding standards step,
+        /settings/standards, migration phase14, 22 API tests (111 total pass).
+      files_changed:
+        - supabase/migrations/202606020001_phase14_guidance_library.sql
+        - apps/api/src/standards/
+        - apps/api/src/app.module.ts
+        - apps/api/src/auth/demo-users.ts
+        - apps/api/src/demo/reset-gis-demo.ts
+        - apps/api/src/processes/processes.service.ts
+        - apps/api/test/standards.test.ts
+        - apps/api/test/guidance-recommendations.test.ts
+        - apps/web/src/lib/guidance.ts
+        - apps/web/src/components/guidance/guidance-selection-panel.tsx
+        - apps/web/src/components/onboarding-wizard.tsx
+        - apps/web/src/app/(app)/settings/standards/page.tsx
+        - apps/web/src/app/(app)/settings/page.tsx
+        - apps/web/src/app/(app)/processes/[id]/page.tsx
+        - apps/web/src/lib/processes.ts
+        - docs/PHASE14_STANDARDS_LIBRARY.md
+      commands_run:
+        - npm run test:api (111/111)
+        - apps/web npm run build
+    tester:
+      status: PASS
+      commands_run:
+        - npm run test:api (111/111)
+        - npm run check:product-language
+        - apps/web npm run build
+      results: All Phase 14 API tests pass; web build clean.
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: |
+        Six MVP packs with requirements and audit_checks; selection lifecycle and audit event standard.selected;
+        recommendations rule engine; web onboarding + settings/standards; docs/PHASE14_STANDARDS_LIBRARY.md complete.
+        Playwright P14 UI suite deferred to CI follow-up — API coverage satisfies phase gate.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-15-acknowledgements
+    title: Phase 15 — Staff Acknowledgement
+    overall_status: APPROVED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: COMPLETE
+      summary: Acknowledgements module (demo store, API, publish hook), migration, web my-acknowledgements + process tab, docs.
+      files_changed:
+        - apps/api/src/acknowledgements/
+        - apps/api/src/processes/processes.service.ts
+        - apps/api/src/processes/processes.module.ts
+        - apps/api/src/app.module.ts
+        - apps/api/src/auth/demo-users.ts
+        - apps/api/src/demo/reset-gis-demo.ts
+        - apps/api/src/notifications/notification.types.ts
+        - apps/api/test/acknowledgements.test.ts
+        - apps/api/test/acknowledgement-status.test.ts
+        - supabase/migrations/202606030001_phase15_acknowledgements.sql
+        - apps/web/src/lib/acknowledgements.ts
+        - apps/web/src/app/(app)/my-acknowledgements/page.tsx
+        - apps/web/src/components/acknowledgements/process-acknowledgements-panel.tsx
+        - apps/web/src/lib/navigation.ts
+        - apps/web/src/app/(app)/processes/[id]/page.tsx
+        - docs/PHASE15_ACKNOWLEDGEMENTS.md
+      commands_run:
+        - npm run test:api
+        - npm run check:product-language
+        - apps/web npm run build
+    tester:
+      status: PASS
+      commands_run:
+        - npm run test:api
+        - npm run check:product-language
+        - apps/web npm run build
+      results: "125/125 API tests pass; product language check pass; web build pass."
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: COMPLETE
+      decision: APPROVED
+      notes: Phase 15 scope delivered for demo mode with publish hook, staff UI, manager progress tab, audit events, and P15 test suite.
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-16-alignment-dashboard
+    title: Phase 16 — Standards Alignment Dashboard
+    overall_status: OPEN
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: OPEN
+      summary: ""
+      files_changed: []
+      commands_run: []
+    tester:
+      status: BLOCKED
+      commands_run: []
+      results: ""
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: BLOCKED
+      decision: ""
+      notes: ""
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-17-internal-audit
+    title: Phase 17 — Internal Audit Engine
+    overall_status: BLOCKED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: BLOCKED
+      summary: ""
+      files_changed: []
+      commands_run: []
+    tester:
+      status: BLOCKED
+      commands_run: []
+      results: ""
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: BLOCKED
+      decision: ""
+      notes: ""
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-18-findings
+    title: Phase 18 — Findings & Corrective Actions
+    overall_status: BLOCKED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: BLOCKED
+      summary: ""
+      files_changed: []
+      commands_run: []
+    tester:
+      status: BLOCKED
+      commands_run: []
+      results: ""
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: BLOCKED
+      decision: ""
+      notes: ""
+      amendments_added: []
+      bug_diagnosis: ""
+
+  - id: phase-19-evidence-pack-v2
+    title: Phase 19 — Evidence Pack v2
+    overall_status: BLOCKED
+    retry_count: 0
+    max_retries: 3
+    builder:
+      status: BLOCKED
+      summary: ""
+      files_changed: []
+      commands_run: []
+    tester:
+      status: BLOCKED
+      commands_run: []
+      results: ""
+      findings: ""
+      failure_reason: ""
+    approver:
+      status: BLOCKED
+      decision: ""
+      notes: ""
       amendments_added: []
       bug_diagnosis: ""

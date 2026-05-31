@@ -23,7 +23,7 @@ test.describe("GIS golden path (UI → API)", () => {
     await expectRouteReady(page, "/audit", "Audit");
     await expectRouteReady(page, "/audit-packs", "Audit Packs");
     await expectRouteReady(page, "/processes", "Processes");
-    await expectRouteReady(page, "/workflows", "Workflows");
+    await expectRouteReady(page, "/workflows", "Compliance Records");
   });
 
   test("GP-02: register a new AI agent", async ({ page }) => {
@@ -124,13 +124,13 @@ test.describe("GIS golden path (UI → API)", () => {
     await page
       .getByRole("textbox", { name: "Workflow title" })
       .fill(`E2E Workflow ${Date.now()}`);
-    await page.getByRole("button", { name: "Start Workflow" }).click();
+    await page.getByRole("button", { name: "Log Compliance Record" }).click();
     await page.waitForURL(/\/workflows\//);
     await expect(page.getByText(/in progress/i).first()).toBeVisible();
   });
 
-  test("GP-10: staff completes assigned task on seeded workflow", async ({ page }) => {
-    await signInAs(page, "gis-staff@aquilens.test");
+  test("GP-10: department head completes in-progress compliance record task", async ({ page }) => {
+    await signInAs(page, "gis-head@aquilens.test");
     await page.goto("/workflows/workflow-gis-enrolment-t2");
     await waitForAppReady(page);
     await expect(page.getByText("Safeguarding review", { exact: true })).toBeVisible();
@@ -173,8 +173,9 @@ test.describe("GIS golden path (UI → API)", () => {
 
     await signInAs(page, "gis-staff@aquilens.test");
     await page.goto(`/my-acknowledgements/${assignmentId}`);
+    await page.waitForURL(`**/processes/**/tutorial?acknowledge=${assignmentId}`);
     await waitForAppReady(page);
-    await expect(page.getByTestId("ack-sop-read-view")).toBeVisible();
+    await expect(page.getByTestId("process-tutorial")).toBeVisible();
     await page
       .getByRole("button", { name: "Confirm acknowledgement" })
       .click();

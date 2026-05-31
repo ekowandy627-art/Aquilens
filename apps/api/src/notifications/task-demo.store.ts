@@ -2,28 +2,6 @@ import type { StaffTaskRecord } from "./notification.types";
 
 const tasks: StaffTaskRecord[] = [
   {
-    id: "task-gis-interview",
-    tenantId: "tenant-gis",
-    assigneeId: "user-gis-staff",
-    workflowId: "wf-gis-enrolment",
-    workflowTitle: "Enrol New Student",
-    stepTitle: "Schedule admission interview",
-    dueDate: "2026-05-30",
-    slaStatus: "on_track",
-    status: "pending",
-  },
-  {
-    id: "task-gis-documents",
-    tenantId: "tenant-gis",
-    assigneeId: "user-gis-staff",
-    workflowId: "wf-gis-enrolment",
-    workflowTitle: "Enrol New Student",
-    stepTitle: "Collect registration documents",
-    dueDate: "2026-05-20",
-    slaStatus: "overdue",
-    status: "pending",
-  },
-  {
     id: "task-gis-owner-draft",
     tenantId: "tenant-gis",
     assigneeId: "user-gis-owner",
@@ -64,7 +42,7 @@ export class TaskDemoStore {
   completedThisWeek(tenantId: string, assigneeId: string) {
     void tenantId;
     void assigneeId;
-    return 1;
+    return 0;
   }
 }
 

@@ -37,7 +37,7 @@ describe("evidence API", () => {
       .get(
         "/api/v1/workflows/workflow-gis-enrolment-t2/tasks/workflow-gis-enrolment-t2-task-2/evidence",
       )
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-owner")
       .expect(200)
       .expect((response) => {
         assert.equal(response.body.success, true);
@@ -64,7 +64,7 @@ describe("evidence API", () => {
       .post(
         "/api/v1/workflows/workflow-gis-evidence-demo/tasks/workflow-gis-evidence-demo-task-1/evidence",
       )
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-owner")
       .field("notes", "Uploaded during interview scheduling")
       .attach("file", fileContents, {
         filename: "interview_notes.pdf",
@@ -94,7 +94,7 @@ describe("evidence API", () => {
       .post(
         "/api/v1/workflows/workflow-gis-evidence-demo/tasks/workflow-gis-evidence-demo-task-1/complete",
       )
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-owner")
       .send({ notes: "Should fail" });
 
     assert.equal(blocked.status, 422);
@@ -114,7 +114,7 @@ describe("evidence API", () => {
       .post(
         "/api/v1/workflows/workflow-gis-evidence-demo/tasks/workflow-gis-evidence-demo-task-1/evidence",
       )
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-owner")
       .attach("file", Buffer.from("proof"), {
         filename: "proof.pdf",
         contentType: "application/pdf",
@@ -125,7 +125,7 @@ describe("evidence API", () => {
       .post(
         "/api/v1/workflows/workflow-gis-evidence-demo/tasks/workflow-gis-evidence-demo-task-1/complete",
       )
-      .set("Authorization", "Bearer demo:user-gis-staff")
+      .set("Authorization", "Bearer demo:user-gis-owner")
       .send({ notes: "Evidence attached" })
       .expect(201)
       .expect((response) => {
@@ -184,7 +184,7 @@ describe("evidence API", () => {
     await request(app.getHttpServer())
       .get("/api/v1/evidence/evidence-enrol-t2-task2-pack/download")
       .set("Authorization", "Bearer demo:user-hospital-staff")
-      .expect(404);
+      .expect(403);
 
     await app.close();
   });

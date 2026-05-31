@@ -10,10 +10,12 @@
     "dev": "npm run dev:web",
     "dev:web": "npm --prefix apps/web run dev",
     "dev:api": "npm --prefix apps/api run dev",
-    "build": "npm run build:web && npm run build:api",
+    "dev:manager": "npm --prefix apps/manager run dev",
+    "build": "npm run build:web && npm run build:api && npm run build:manager",
     "build:web": "npm run build:shared && npm run build --workspace=web",
     "build:shared": "npm run build --workspace=@aquilens/shared",
     "build:api": "npm run build:shared && npm --prefix apps/api run build",
+    "build:manager": "npm --prefix apps/manager run build",
     "lint": "npm run lint:web && npm run lint:api",
     "lint:web": "npm --prefix apps/web run lint",
     "lint:api": "npm --prefix apps/api run lint",
@@ -23,6 +25,7 @@
     "test:e2e": "npm --prefix apps/web run test:e2e",
     "check:product-language": "node scripts/check-product-language.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
-    "seed:supabase-auth": "node scripts/seed-supabase-auth.mjs"
+    "seed:supabase-auth": "node scripts/seed-supabase-auth.mjs",
+    "bootstrap:platform": "node scripts/bootstrap-platform-admin.mjs"
   }
 }

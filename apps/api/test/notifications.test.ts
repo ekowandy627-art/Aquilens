@@ -56,7 +56,7 @@ describe("notifications API", () => {
     await app.init();
 
     await request(app.getHttpServer())
-      .patch("/api/v1/notifications/notif-staff-task-assigned/read")
+      .patch("/api/v1/notifications/notif-staff-ack-assigned/read")
       .set("Authorization", "Bearer demo:user-gis-staff")
       .expect(200)
       .expect((response) => {

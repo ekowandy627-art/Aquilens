@@ -423,6 +423,16 @@ export default function ProcessDetailPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {data.status === "active" ? (
+              <Link href={`/processes/${params.id}/tutorial`}>
+                <button
+                  type="button"
+                  className="rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-bg"
+                >
+                  View tutorial
+                </button>
+              </Link>
+            ) : null}
             {lifecycle?.canSubmit ? (
               <PrimaryButton
                 disabled={busy}
@@ -450,17 +460,17 @@ export default function ProcessDetailPage() {
                   type="button"
                   className="rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-bg"
                 >
-                  Start Workflow
+                  Log Compliance Record
                 </button>
               </Link>
             ) : (
               <button
                 type="button"
                 disabled
-                title="Only active SOPs can start workflows"
+                title="Only active SOPs can log compliance records"
                 className="rounded-md border border-border px-3 py-2 text-sm text-text-muted"
               >
-                Start Workflow
+                Log Compliance Record
               </button>
             )}
             {lifecycle?.canArchive ? (

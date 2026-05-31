@@ -109,7 +109,7 @@ export function StructureEditor() {
     <>
       <PageHeader
         title="Function Tree"
-        description="Edit the tenant scaffold that organises functions, process areas, and future SOPs."
+        description="Create functions with descriptions, organise process areas, and save the tenant scaffold."
         action={
           <div className="flex gap-2">
             <Button type="button" variant="secondary" onClick={() => void saveStructure()} disabled={loading}>
@@ -164,25 +164,50 @@ export function StructureEditor() {
         <section className="rounded-md border border-border bg-white p-5">
           {selectedFunction ? (
             <>
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <label className="block flex-1">
-                  <span className="text-sm font-medium text-slate-700">
-                    Function name
-                  </span>
-                  <input
-                    value={selectedFunction.name}
-                    onChange={(event) =>
-                      updateFunctions((functions) =>
-                        functions.map((fn) =>
-                          fn.id === selectedFunction.id
-                            ? { ...fn, name: event.target.value }
-                            : fn,
-                        ),
-                      )
-                    }
-                    className="mt-1 h-10 w-full rounded-md border border-border px-3 text-sm font-medium"
-                  />
-                </label>
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0 flex-1 space-y-4">
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700">
+                      Function name
+                    </span>
+                    <input
+                      value={selectedFunction.name}
+                      onChange={(event) =>
+                        updateFunctions((functions) =>
+                          functions.map((fn) =>
+                            fn.id === selectedFunction.id
+                              ? { ...fn, name: event.target.value }
+                              : fn,
+                          ),
+                        )
+                      }
+                      className="mt-1 h-10 w-full rounded-md border border-border px-3 text-sm font-medium"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700">
+                      Description
+                    </span>
+                    <textarea
+                      value={selectedFunction.description ?? ""}
+                      onChange={(event) =>
+                        updateFunctions((functions) =>
+                          functions.map((fn) =>
+                            fn.id === selectedFunction.id
+                              ? {
+                                  ...fn,
+                                  description: event.target.value || undefined,
+                                }
+                              : fn,
+                          ),
+                        )
+                      }
+                      rows={3}
+                      placeholder="What this function is responsible for (e.g. curriculum delivery, student records, assessment)."
+                      className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm leading-6"
+                    />
+                  </label>
+                </div>
                 <Button
                   type="button"
                   variant="secondary"

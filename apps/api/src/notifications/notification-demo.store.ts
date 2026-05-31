@@ -23,15 +23,15 @@ function buildInitialNotifications() {
   notifications.clear();
 
   seedNotification({
-    id: "notif-staff-task-assigned",
+    id: "notif-staff-ack-assigned",
     tenantId: "tenant-gis",
     userId: "user-gis-staff",
-    type: "task_assigned",
-    title: "Task assigned: Safeguarding review",
-    body: "You have been assigned step 3 in Enrol New Student — Term 2.",
-    entityType: "workflow_task",
-    entityId: "workflow-gis-enrolment-t2-task-3",
-    entityName: "Safeguarding review",
+    type: "acknowledgement_assigned",
+    title: "Acknowledgement assigned: Enrol New Student v3",
+    body: "Read the procedure tutorial and confirm you understand the published version.",
+    entityType: "acknowledgement",
+    entityId: "ack-assignment-seed",
+    entityName: "Enrol New Student",
     isRead: false,
   });
 

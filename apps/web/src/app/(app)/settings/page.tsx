@@ -11,7 +11,7 @@ const tabs = [
   },
   {
     label: "Structure",
-    description: "Functions and process areas.",
+    description: "Create functions, descriptions, and process areas.",
     href: "/settings/structure",
     icon: GitBranch,
   },

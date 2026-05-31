@@ -7,6 +7,7 @@ import {
   type AuditListFilters,
   type AuditLogRecord,
 } from "./audit-demo.store";
+import { isOperationalAuditEvent } from "./audit-operational";
 
 type AuditEvent = {
   eventType: string;
@@ -96,6 +97,7 @@ export class AuditService {
       .from("audit_log")
       .select("*")
       .eq("tenant_id", user.tenantId)
+      .not("event_type", "like", "auth.%")
       .order("timestamp", { ascending: false })
       .limit(limit + 1);
 
@@ -141,7 +143,9 @@ export class AuditService {
     const page = hasMore ? rows.slice(0, limit) : rows;
 
     return {
-      items: page.map((row) => this.toListItemFromRow(row)),
+      items: page
+        .map((row) => this.toListItemFromRow(row))
+        .filter((item) => isOperationalAuditEvent(item.eventType)),
       nextCursor: hasMore ? (page[page.length - 1]?.id as string) : undefined,
       total: page.length,
     };

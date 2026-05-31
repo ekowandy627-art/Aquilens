@@ -6,10 +6,8 @@ import { BookOpenCheck } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { CardListSkeleton } from "@/components/list-table-skeleton";
 import { PageHeader } from "@/components/page-header";
-import { PrimaryButton } from "@/components/primary-button";
 import {
   acknowledgementStatusBadgeClass,
-  confirmAcknowledgement,
   fetchMyAcknowledgements,
   type AcknowledgementAssignment,
 } from "@/lib/acknowledgements";
@@ -18,12 +16,6 @@ export default function MyAcknowledgementsPage() {
   const [items, setItems] = useState<AcknowledgementAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  async function reload() {
-    const data = await fetchMyAcknowledgements();
-    setItems(data);
-  }
 
   useEffect(() => {
     let cancelled = false;
@@ -52,23 +44,6 @@ export default function MyAcknowledgementsPage() {
       cancelled = true;
     };
   }, []);
-
-  async function handleConfirm(assignmentId: string, processVersionId: string) {
-    setBusyId(assignmentId);
-    setError(null);
-    try {
-      await confirmAcknowledgement(assignmentId, processVersionId);
-      await reload();
-    } catch (confirmError) {
-      setError(
-        confirmError instanceof Error
-          ? confirmError.message
-          : "Unable to confirm acknowledgement",
-      );
-    } finally {
-      setBusyId(null);
-    }
-  }
 
   return (
     <>
@@ -116,19 +91,12 @@ export default function MyAcknowledgementsPage() {
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Link
-                  href={`/my-acknowledgements/${item.id}`}
+                  href={`/processes/${item.processId}/tutorial?acknowledge=${item.id}`}
                   className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                   data-testid="ack-read-sop-link"
                 >
-                  Read SOP
+                  Open tutorial
                 </Link>
-                <PrimaryButton
-                  disabled={busyId === item.id}
-                  data-testid="ack-confirm-button"
-                  onClick={() => void handleConfirm(item.id, item.processVersionId)}
-                >
-                  {busyId === item.id ? "Confirming…" : "Confirm acknowledgement"}
-                </PrimaryButton>
               </div>
             </div>
           ))}

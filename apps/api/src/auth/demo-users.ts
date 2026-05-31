@@ -57,6 +57,7 @@ const demoUsers: Record<string, AuthUser> = {
       "tenant_scaffold:read",
       "tenant_scaffold:manage",
       "workflows:read",
+      "workflows:complete",
       "acknowledgements:read",
       "acknowledgements:manage",
     ],
@@ -68,8 +69,6 @@ const demoUsers: Record<string, AuthUser> = {
     roles: ["Staff"],
     permissions: [
       "processes:read",
-      "workflows:read",
-      "workflows:complete",
       "tenant_scaffold:read",
       "acknowledgements:complete",
     ],
@@ -88,8 +87,6 @@ const demoUsers: Record<string, AuthUser> = {
     roles: ["Staff"],
     permissions: [
       "processes:read",
-      "workflows:read",
-      "workflows:complete",
       "acknowledgements:complete",
     ],
   },
