@@ -1,5 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd ../.. && npm install && npm install --workspace=web --include=optional",
+  "installCommand": "cd ../.. && npm install --include=optional",
   "buildCommand": "cd ../.. && npm run build:web"
 }
