@@ -144,7 +144,7 @@ Each pack should use this schema.
 | UK School Safeguarding Pack | DfE | Monthly, weekly during July to September | KCSIE updates commonly apply from September |
 | Ofsted / UK School Inspection Pack | Ofsted / GOV.UK | Monthly + event-driven | Ofsted framework and toolkits are subject to active change |
 | Ghana School Safety / Child Protection Pack | MoE/GES/MoGCSP and partner sources | Quarterly + event-driven | Official public source availability may vary, so updates need human review |
-| Food Safety / HACCP Pack | Food Standards Agency | Monthly + event-driven | Food safety guidance and HACCP resources are public and operationally important |
+| HACCP and SALSA Food Manufacturing Readiness Pack | FSA + SALSA + Codex | Monthly + event-driven | Food safety guidance, HACCP resources and SALSA scheme changes are operationally important for food and drink manufacturers |
 | ISO 22000 Food Safety Pack | ISO | Monthly while replacement activity is active, then quarterly | ISO page indicates expected replacement activity |
 | BRCGS Food Safety Pack | BRCGS | Quarterly + event-driven | Certification scheme updates can affect food manufacturers |
 | ISO 15189 Medical Laboratory Pack | ISO + UKAS where relevant | Quarterly + event-driven | Medical lab quality and competence requirements are high-risk |
@@ -1628,36 +1628,235 @@ Ghana’s Child and Family Welfare Policy was developed by the Government of Gha
 
 ---
 
-## PACK-FOOD-HACCP: Food Safety and HACCP Pack
+## PACK-FOOD-HACCP-SALSA: HACCP and SALSA Food Manufacturing Readiness Pack
 
 | Field | Detail |
 |---|---|
-| Pack type | UK food safety guidance pack |
-| Sector | Food, hospitality, catering, food manufacturing, schools with catering |
+| Pack type | UK food and drink manufacturing standards library pack |
+| Sector | Food and drink manufacturing, small and medium manufacturers, drinks manufacturers preparing for SALSA approval |
 | Jurisdiction | UK |
-| Applicability trigger | Tenant prepares, stores, sells or distributes food |
-| Review frequency | Monthly + event-driven |
+| Applicability trigger | Tenant manufactures, packs, stores, distributes or sells food or drink; tenant selects HACCP, SALSA readiness, retail approval or food safety management |
+| Review frequency | Monthly + event-driven; review immediately after legal change, SALSA issue change, product/process change, incident, recall, complaint trend or audit finding |
 | Risk level | High |
-| Primary sources | https://www.food.gov.uk/business-guidance/hazard-analysis-and-critical-control-point-haccp, https://www.food.gov.uk/business-guidance/safer-food-better-business-sfbb, https://www.gov.uk/food-safety-hazard-analysis |
+| Primary sources | FSA HACCP guidance, FSA Safer Food Better Business, GOV.UK food safety hazard analysis, Codex General Principles of Food Hygiene CXC 1-1969, SALSA official website and public standard/change materials |
+
+### A. Executive Summary
+
+HACCP, Hazard Analysis and Critical Control Point, is the structured method food businesses use to identify food safety hazards, decide how they are controlled, monitor the controls and act when controls fail. In the UK, food businesses must have food safety management procedures based on HACCP principles; the Food Standards Agency describes HACCP as a way of managing food safety hazards, and GOV.UK states food businesses must have a food safety management plan based on HACCP principles ([FSA HACCP guidance](https://www.food.gov.uk/business-guidance/hazard-analysis-and-critical-control-point-haccp); [GOV.UK HACCP food plan](https://www.gov.uk/food-safety-hazard-analysis)). Aquilens should treat HACCP as a legally significant food safety management foundation, not as an optional certification product.
+
+SALSA, Safe and Local Supplier Approval, is a third-party food safety certification and supplier assurance scheme for small and micro food and drink producers ([SALSA Standard page](https://www.salsafood.co.uk/standard); [SALSA Food & Drink Production Audit Standard Issue 7](https://www.salsafood.co.uk/file/142-7cfa6c41-54cb-410a-b948-4e1b5a1c094a)). It is not a law and Aquilens must not present SALSA readiness as certification. It is commonly used as a buyer confidence and approval route, especially for smaller UK producers who need credible evidence of food safety, legality and quality systems without immediately moving to larger schemes such as BRCGS ([BRCGS Food Safety context](https://www.brcgs.com/our-standards/food-safety/)). SALSA public materials state that Issue 7 materials are available in June 2026, with audits to the new standard from 1 September 2026 ([SALSA New Standard Issues 2026](https://www.salsafood.co.uk/new-standard-issues-2026)); Aquilens should therefore version SALSA content and support transition tracking.
+
+For small drinks manufacturers, the practical overlap is strong: the HACCP plan, process flow, hazard analysis, CCP monitoring, cleaning, allergen controls, supplier approval, calibration, traceability, recall tests, training and internal audits become core SALSA evidence. Aquilens should support governance, records, reminders, workflows, audit readiness and continuous improvement. It must not claim to certify or guarantee compliance.
 
 ### Source Notes
 
-Food Standards Agency guidance says HACCP is a way of managing food safety hazards and that food safety management procedures should be based on HACCP principles. GOV.UK says food businesses must have a plan based on HACCP principles.
+Important source boundaries:
 
-### Requirement Areas
+- HACCP legal and good-practice claims are based on public FSA, GOV.UK and Codex Alimentarius sources, including the Codex General Principles of Food Hygiene CXC 1-1969 ([Codex Codes of Practice](https://www.fao.org/fao-who-codexalimentarius/codex-texts/codes-of-practice/en/)).
+- SALSA is a private certification scheme. Aquilens should store practical summaries, mappings, evidence expectations and readiness checks only. Do not reproduce copyrighted SALSA standard text unless the customer has a licensed copy and Aquilens has permission to store it.
+- BRCGS is included only as context for a higher retail certification scheme. Aquilens should not copy BRCGS controlled standard text without licence.
 
-- Hazard analysis
-- Critical control points
-- Monitoring
-- Corrective action
-- Verification
-- Record keeping
-- Hygiene
-- Temperature control
-- Allergen control
-- Cleaning
-- Pest control
-- Traceability and recall
+### B. HACCP Library Entry
+
+#### Plain-English Explanation
+
+HACCP is a preventive food safety system. A business maps each process step, identifies hazards that could make food unsafe, decides which controls are essential, monitors those controls and records corrective action when limits are missed. FSA and GOV.UK guidance identify biological, chemical and physical hazards, and Aquilens should also track allergens because SALSA's public audit standard treats allergen hazards and allergen management as explicit food safety controls ([FSA HACCP guidance](https://www.food.gov.uk/business-guidance/hazard-analysis-and-critical-control-point-haccp); [FSA allergen guidance](https://www.food.gov.uk/business-guidance/allergen-guidance-for-food-businesses); [SALSA Issue 7 Audit Standard](https://www.salsafood.co.uk/file/142-7cfa6c41-54cb-410a-b948-4e1b5a1c094a)).
+
+HACCP applies to food businesses including food and drink manufacturers, caterers, distributors and retailers. For Aquilens' small drinks manufacturing use case, it applies to receipt of ingredients and packaging, water quality, blending, filtration, heat treatment or pasteurisation, filling, capping, coding, storage, dispatch and recall readiness.
+
+Why it matters:
+
+- It is the operating basis for controlling food safety hazards.
+- UK food businesses need food safety management procedures based on HACCP principles.
+- It produces records that local authorities, customers, SALSA auditors and internal managers expect to see.
+- It helps prove that products are made under controlled, reviewed and traceable conditions.
+
+Status in Aquilens:
+
+- Legal requirement basis: food safety management procedures based on HACCP principles for food businesses.
+- Certification: HACCP itself is not normally a certification scheme in this context.
+- Buyer requirement: customers may ask to see HACCP plans, CCP records, traceability and recall evidence.
+- Good practice: Codex HACCP principles provide internationally recognised structure.
+
+#### Scope
+
+Business types covered:
+
+- Food and drink manufacturing.
+- Bottled drinks, juices, soft drinks, kombucha, mixers, syrups, ready-to-drink products and similar products.
+- Small, micro and growing producers preparing for customer approval or SALSA certification.
+- Warehousing, distribution and packing operations where food safety hazards can arise.
+
+Typical process areas affected:
+
+- Supplier and ingredient approval.
+- Raw material receipt and intake checks.
+- Storage and stock rotation.
+- Water and ice controls where relevant.
+- Recipe control and formulation.
+- Allergen controls and changeovers.
+- Processing, filtration, pasteurisation or other kill/control steps.
+- Filling, capping, sealing, coding and labelling.
+- Cleaning, sanitation and hygiene.
+- Pest control.
+- Calibration and maintenance.
+- Batch release.
+- Complaints, non-conformance, incident response, withdrawal and recall.
+
+Key documents and records:
+
+- HACCP policy or food safety management procedure.
+- HACCP team and competence evidence.
+- Product description and intended use.
+- Process flow diagram and onsite verification record.
+- Hazard analysis and risk rating.
+- CCP decision record.
+- Critical limits and monitoring plans.
+- CCP monitoring records.
+- Corrective action and product disposition records.
+- Verification schedule and verification records.
+- Validation evidence for control measures.
+- Change review records.
+- Traceability, batch and recall-test records.
+- Training records.
+
+Typical audit or inspection expectations:
+
+- The plan is current, signed off, version-controlled and reviewed after changes.
+- The process flow matches the actual operation.
+- Hazards are identified realistically for each process step.
+- CCPs and critical limits are justified and monitored.
+- Out-of-limit events create corrective action and product disposition evidence.
+- Verification is performed independently enough to be credible.
+- Records are complete, legible, attributable, retained and retrievable.
+
+### C. SALSA Library Entry
+
+#### Plain-English Explanation
+
+SALSA, Safe and Local Supplier Approval, is a certification and supplier assurance scheme designed for smaller food and drink producers. Its practical purpose is to help buyers see that a producer has suitable controls for food safety, legality and quality. It is especially relevant where a small drinks manufacturer wants to supply wholesalers, retailers, hospitality groups, food service customers or larger buyers who need assurance before listing the product.
+
+SALSA is not a legal requirement. It is a certification or buyer expectation route. The underlying food law obligations still sit with the food business, and HACCP-based food safety management remains the foundation.
+
+For UK food and drink manufacturing, SALSA readiness means the business can show a working management system, hygienic site and process controls, trained staff, controlled suppliers, traceable batches, correct labels, managed allergens, investigated complaints, internal audits and corrective actions.
+
+#### Scope
+
+Business types covered:
+
+- Small and micro food and drink manufacturers.
+- Producers supplying local, regional or national buyers.
+- Manufacturers seeking a practical stepping stone before larger schemes such as BRCGS.
+- Drinks manufacturers producing bottled, canned or kegged products, including low/no-alcohol drinks, juices, soft drinks, mixers and similar product categories.
+
+Typical process areas affected:
+
+- Site standards and prerequisite programmes.
+- Food safety plan and HACCP.
+- Product legality and labelling.
+- Supplier approval and intake checks.
+- Process and product control.
+- Traceability, withdrawal and recall.
+- Personnel hygiene and training.
+- Management review, internal audit and corrective action.
+
+Main SALSA readiness sections for Aquilens, based on public SALSA materials:
+
+- Prerequisite controls: training, personal hygiene, cleaning, allergen management, process/environment/equipment control, supplier and raw material control, stock control, waste, pest management, equipment, maintenance, vehicles, storage and distribution.
+- HACCP: scope, product description, intended use, process flow, hazard analysis, controls, risk assessment, CCPs, critical limits, monitoring, corrective actions, verification, records, review, HACCP team and monitoring competency.
+- Management systems and documentation: food safety system review, non-conformance investigation, corrective action, traceability, product identification, incident management, document control, specifications, labelling, shelf-life/product testing and change management.
+- Premises, layout and structure: premises approval, external areas, security, site layout, methods of working, building structure, services and fabrication.
+- Optional add-ons or sector modules where relevant, such as SALSA plus Beer for eligible breweries.
+
+Typical records needed for audit readiness:
+
+- Approved supplier list and supplier evidence.
+- Raw material specifications and intake checks.
+- Product specifications, recipes and label approvals.
+- HACCP plan, hazard analysis and CCP records.
+- Cleaning schedules and completed cleaning records.
+- Pest-control contractor reports and internal checks.
+- Calibration certificates and calibration checks.
+- Maintenance logs.
+- Training matrix and signed training records.
+- Batch records, traceability tests and mass balance checks.
+- Complaint records, investigations and trends.
+- Non-conformance and CAPA logs.
+- Internal audit schedule and findings.
+- Management review minutes.
+- Recall and withdrawal procedure plus mock recall evidence.
+
+Suggested SALSA SOPs:
+
+- Food Safety and HACCP SOP.
+- Document Control SOP.
+- Supplier Approval SOP.
+- Goods-In and Intake Inspection SOP.
+- Allergen Management SOP.
+- Cleaning and Hygiene SOP.
+- Pest Control SOP.
+- Production Batch Control SOP.
+- CCP Monitoring SOP.
+- Calibration SOP.
+- Maintenance SOP.
+- Labelling and Product Release SOP.
+- Traceability and Mock Recall SOP.
+- Complaint Handling SOP.
+- Non-Conformance and CAPA SOP.
+- Internal Audit SOP.
+- Training and Competency SOP.
+- Management Review SOP.
+
+Suggested forms and evidence types:
+
+- HACCP hazard analysis form.
+- CCP monitoring sheet.
+- Cleaning record.
+- Pre-start hygiene check.
+- Goods-in inspection form.
+- Supplier approval questionnaire and evidence checklist.
+- Allergen matrix.
+- Label approval checklist.
+- Batch production record.
+- Glass/brittle-plastic check if relevant.
+- Calibration log.
+- Maintenance request and completion record.
+- Complaint investigation form.
+- Non-conformance report.
+- CAPA action form.
+- Internal audit checklist.
+- Traceability test form.
+- Recall exercise report.
+- Training record and competency sign-off.
+
+### D. Shared Food Manufacturing Controls
+
+#### Requirement Areas
+
+- Food safety management.
+- HACCP plan.
+- Hazard analysis.
+- Critical control points.
+- Critical limits.
+- Monitoring records.
+- Corrective actions.
+- Verification.
+- Validation.
+- Traceability.
+- Supplier approval.
+- Allergen management.
+- Cleaning and hygiene.
+- Pest control.
+- Training and competency.
+- Equipment maintenance.
+- Calibration.
+- Product labelling.
+- Product recall and withdrawal.
+- Complaints.
+- Internal audits.
+- Document control.
+- Non-conformance and CAPA.
+- Management review.
 
 ### Suggested Departments
 
@@ -1668,38 +1867,202 @@ Food Standards Agency guidance says HACCP is a way of managing food safety hazar
 - Facilities
 - Procurement
 
-### Starter SOP Templates
+### E. Aquilens Software Requirements
 
-- HACCP Plan SOP
-- Temperature Monitoring SOP
-- Cleaning SOP
-- Allergen Control SOP
-- Food Incident SOP
-- Supplier Food Safety SOP
-- Product Recall SOP
-- Pest Control SOP
+Product gap analysis for HACCP and SALSA support:
 
-### Starter Audit Checks
+- Incident management needs food-specific severity, batch linkage, hold/release status, withdrawal/recall decision logs and customer/regulator notification evidence.
+- Non-conformance and CAPA need source mapping from CCP deviations, complaints, audits, supplier failures, intake failures, labelling errors and traceability gaps.
+- Production records need batch genealogy, recipe version, input lots, output quantities, line checks, label checks, release status and QA review.
+- CCP monitoring needs scheduled checks, digital readings, limit comparison, missed-check alerts, deviation creation and verifier sign-off.
+- Traceability needs one-up/one-down supplier/customer records, mass balance, mock recall timing and evidence export.
+- Training evidence needs role-based matrices tied to SOP versions, HACCP responsibilities, allergen competence and refresher schedules.
+- Internal audits need standard/control mapping, findings, severity, root cause, CAPA and effectiveness review.
+- Audit pack generation needs controlled exports by product/site/date range with evidence metadata and redaction.
+- Document control needs versioning, approval, effective dates, obsolete document handling and training acknowledgements.
+- Supplier approval needs risk ratings, approved supplier lists, raw material specs, certificate expiry and supplier incident history.
+- Allergen risk needs ingredient-level allergen data, product allergen matrix, cross-contact assessment, label approval and changeover verification.
 
-- Is a HACCP plan documented?
-- Are hazards identified?
-- Are critical controls monitored?
-- Are temperature records retained?
-- Are cleaning checks completed?
-- Are allergen controls documented?
-- Are corrective actions recorded?
-- Is recall process documented and tested?
+| Control area | Create or upload | Key data fields | Workflow or approval | Evidence retained | Alerts and reminders | Dashboard metric | Audit-pack output |
+|---|---|---|---|---|---|---|---|
+| Food safety management | Food safety policy, responsibilities, review calendar | owner, site, scope, products, review date, approval status | draft, technical review, management approval, annual review | signed policy, review minutes | overdue review, owner missing | food safety review completion | policy and governance summary |
+| HACCP plan | HACCP plan, team, process flow, product description | product, intended use, consumer group, process version, team roles | HACCP team approval and change approval | plan PDF, flow diagram, meeting records | review after change, annual review | HACCP plans current | HACCP plan export |
+| Hazard analysis | Hazard table by process step | hazard type, likelihood, severity, risk score, rationale, control measure | technical review and approval | hazard worksheet, supporting references | high-risk hazard not reviewed | high-risk hazards open | hazard analysis register |
+| CCPs | CCP records and decision tree outputs | process step, CCP decision, critical limit, monitoring method, frequency, responsible role | QA approval, production acknowledgement | CCP decision evidence, limit justification | missed monitoring, expired validation | CCP compliance rate | CCP schedule and limits |
+| Monitoring records | Digital checks or uploaded logs | batch, line, time, reading, unit, pass/fail, operator, verifier | operator completion, QA verification for exceptions | signed logs, device data, photos | due/late checks, out-of-limit values | on-time checks, failures by CCP | monitoring log bundle |
+| Corrective actions | Immediate correction and disposition | trigger, affected batch, action, product hold/release/disposal, owner, due date | QA disposition approval | action records, photos, hold labels | overdue action, repeat failure | closure time, repeat events | corrective action report |
+| Verification | Scheduled verification tasks | activity, scope, sample size, result, verifier, date | independent verification where required | verification reports, swabs/tests, record checks | overdue verification | verification completion | verification schedule and results |
+| Validation | Validation evidence library | control measure, source, study, limit rationale, date, reviewer | technical approval before go-live | scientific evidence, challenge data, supplier data | validation review due | controls with valid evidence | validation evidence index |
+| Traceability | Batch genealogy and recall test records | supplier lot, production lot, customer, quantity, dates, mass balance | QA release and recall-test review | batch records, dispatch records, mock recall | recall test due, incomplete genealogy | traceability completion time | traceability report |
+| Supplier approval | Supplier records, questionnaires, specs | supplier, material, risk rating, approval status, expiry, certificates | procurement request, QA approval, periodic review | questionnaires, certificates, specs | certificate expiry, review due | approved suppliers current | approved supplier list |
+| Allergen management | Allergen matrix and changeover controls | allergen, material, product, line, label status, cross-contact risk | recipe/label QA approval | matrix, label checks, cleaning records | allergen change, label mismatch | allergen risk actions open | allergen matrix and checks |
+| Cleaning and hygiene | Schedules, checks, chemical records | area, task, chemical, concentration, frequency, operator, verifier | production completion, QA verification | cleaning logs, COSHH/safety data sheets | missed clean, chemical review due | cleaning completion | cleaning record pack |
+| Pest control | Contractor reports and internal checks | area, bait point, issue, trend, action, contractor | site manager review, CAPA for trends | reports, maps, corrective actions | overdue service, repeated activity | pest findings trend | pest-control evidence pack |
+| Training | Training matrix and competency records | role, SOP, employee, completion, assessment, expiry | manager assignment, trainer sign-off | attendance, tests, observed competence | expiring training | training compliance by role | training matrix |
+| Maintenance | Planned and reactive maintenance | asset, task, due date, issue, parts, food safety impact | maintenance closure, QA release after food safety work | work orders, post-maintenance clean/release | overdue PM, repeated breakdown | PM completion | asset maintenance pack |
+| Calibration | Calibration schedule and certificates | instrument, range, tolerance, due date, result, certificate | QA approval of certificate and failures | certificates, out-of-tolerance impact review | calibration due/overdue | calibrated assets current | calibration register |
+| Labelling | Label artwork and approval | product, version, allergens, ingredients, claims, barcode, approved date | technical and management approval | approved artwork, checklists | label review due, recipe change | labels approved before production | label approval pack |
+| Recall and withdrawal | Recall procedure and exercises | trigger, product, batch, customer, contact, decision, timeline | incident team workflow and management review | recall test, communications, decision log | mock recall due, open incident | recall test time and accuracy | recall file |
+| Complaints | Complaint case and investigation | customer, product, batch, issue type, risk, root cause, outcome | QA triage, CAPA if systemic | complaint evidence, samples/photos | high-risk complaint escalation | complaint trend | complaints register |
+| Internal audits | Audit programme and checklists | scope, clause/control, auditor, finding, severity, due date | audit sign-off and CAPA tracking | reports, findings, closure evidence | overdue audit/finding | audit completion and overdue findings | internal audit pack |
+| Document control | SOPs, forms, specs, records | document id, owner, version, effective date, review date | draft, review, approval, issue, obsolescence | approved versions, change history | review due, untrained on new SOP | controlled documents current | document register |
+| Non-conformance and CAPA | NC report, RCA, CA, PA | source, severity, affected batch, root cause, action, owner, due date | triage, investigation, approval, effectiveness check | NC forms, photos, disposition, closure | overdue CAPA, repeated root cause | CAPA closure and recurrence | NC/CAPA register |
+| Management review | Review agenda and minutes | KPI, trend, decision, action, owner, due date | leadership approval and action tracking | minutes, dashboards, actions | review due, actions overdue | management actions closed | management review pack |
 
-### Evidence Expected
+### F. Suggested Data Model
 
-- HACCP plan
-- Temperature logs
-- Cleaning records
-- Supplier records
-- Allergen matrix
-- Corrective action records
-- Recall test records
-- Pest control records
+| Object | Suggested key fields |
+|---|---|
+| Standard | id, name, acronym, owner, source_url, jurisdiction, sector, legal_status, certification_status, current_version, effective_date, next_review_date, copyright_status, access_notes |
+| Clause or requirement | id, standard_id, reference_code, title, summary, control_area, applicability, risk_level, evidence_expected, source_url, version, review_status |
+| Control | id, requirement_id, name, objective, control_type, frequency, owner_role, evidence_types, linked_sops, linked_forms, metrics |
+| SOP | id, title, document_number, version, owner, approver, effective_date, review_date, related_controls, training_required, obsolete_flag |
+| Workflow | id, name, trigger, steps, approvers, SLA, escalation_rules, linked_records, status |
+| Form/template | id, title, control_area, fields_schema, required_evidence, approval_required, retention_period, version |
+| Evidence record | id, evidence_type, linked_control, linked_batch, linked_supplier, file_url, captured_by, captured_at, verifier, verification_status, retention_until |
+| Incident | id, incident_type, severity, product, batch, site, detected_at, immediate_action, regulatory_notification_assessment, status, owner |
+| Non-conformance | id, source, requirement_id, description, severity, affected_batch, containment, disposition, root_cause, status, owner, due_date |
+| Corrective action | id, nc_id, action, owner, due_date, completion_date, evidence, effectiveness_check, status |
+| Preventive action | id, source, risk, action, owner, due_date, verification_method, status |
+| Training record | id, employee, role, sop_id, training_type, trainer, completion_date, assessment_result, expiry_date, evidence |
+| Audit finding | id, audit_id, requirement_id, finding_type, severity, evidence, root_cause_required, action_owner, due_date, closure_status |
+| Batch or production record | id, product, recipe_version, batch_code, production_date, line, operator, input_lots, output_quantity, yield, release_status, QA_reviewer |
+| Supplier record | id, supplier, material, approval_status, risk_rating, certificates, specs, last_review, next_review, incidents, approved_by |
+| CCP monitoring record | id, ccp_id, batch_id, check_time, parameter, reading, unit, critical_limit, result, operator, verifier, corrective_action_id |
+
+### G. Example Bottled Drink Manufacturer Setup
+
+Example process:
+
+1. Approve suppliers and receive ingredients, bottles, closures and labels.
+2. Store ingredients and packaging.
+3. Prepare water and syrup/base.
+4. Blend drink.
+5. Filter or sieve where relevant.
+6. Pasteurise or equivalent validated control step where product risk assessment requires it.
+7. Fill bottles.
+8. Cap or seal.
+9. Code and label.
+10. Pack, store and dispatch.
+
+HACCP library structure for each process step:
+
+| Field | Example for pasteurisation step |
+|---|---|
+| Hazard identification | Survival of pathogenic microorganisms if heat process is inadequate |
+| Hazard category | Biological |
+| Process step | Pasteurisation |
+| Risk rating | High before control; low/acceptable after validated control when within limits |
+| Control measure | Validated time and temperature process, calibrated temperature probe, flow/hold controls if applicable |
+| CCP decision | Possible CCP, subject to product/process-specific HACCP decision |
+| Critical limit | Product-specific validated minimum time and temperature, defined by technical validation |
+| Monitoring method | Continuous temperature record or operator check of time/temperature display, plus batch record review |
+| Monitoring frequency | Continuous where equipment permits; otherwise at defined start/run/end intervals justified by HACCP |
+| Responsible role | Production operator records; QA verifies |
+| Corrective action | Stop line, hold affected batch, investigate cause, reprocess or dispose as approved, record product disposition |
+| Verification activity | QA review of records, calibration review, periodic microbiological or process verification as justified |
+| Validation evidence | Process validation, scientific literature, equipment capability, product pH/aw/water activity where relevant |
+| Records required | CCP log, batch record, calibration certificate, validation file, deviation/CAPA record |
+
+Additional bottled-drink hazards to capture:
+
+- Biological: contaminated water, inadequate heat treatment, post-process contamination, poor hygiene.
+- Chemical: cleaning chemical residues, incorrect additive dosing, migration from packaging, lubricant contamination.
+- Physical: glass, plastic fragments, metal fragments, cap defects.
+- Allergen: allergenic ingredients, flavour carriers, cross-contact, incorrect label.
+
+Relationship between HACCP and SALSA:
+
+- HACCP supports SALSA readiness by providing the documented food safety plan, hazard analysis, CCP decisions, monitoring records, corrective actions, verification, validation and review evidence.
+- HACCP outputs that become SALSA evidence include product descriptions, intended-use statements, process flow diagrams, hazard tables, CCP logs, deviation records, HACCP team competence records and review minutes.
+- Aquilens modules that should connect the two are document control, workflows, forms, evidence records, production records, CCP monitoring, incidents, non-conformance, CAPA, supplier approval, training, internal audit and audit-pack generation.
+- The SALSA readiness dashboard should roll up HACCP health into section readiness, showing current HACCP plan status, overdue checks, deviations, open CAPAs and missing evidence.
+
+Example production records:
+
+- Batch manufacturing record.
+- Recipe/version confirmation.
+- Ingredient lot and packaging lot records.
+- Pre-start hygiene check.
+- CCP pasteurisation log where applicable.
+- Fill volume or weight checks.
+- Cap torque or seal integrity checks.
+- Code and label verification.
+- Product release decision.
+- Dispatch and customer traceability.
+
+### H. SALSA Readiness Dashboard Design
+
+Dashboard purpose: show whether a small drinks manufacturer has current evidence for the controls that SALSA auditors and buyers are likely to inspect. The dashboard supports readiness; it does not certify.
+
+Suggested widgets:
+
+- Readiness score by section: prerequisite controls, HACCP, supplier/traceability, product/process control, management system.
+- HACCP health: current plan, open high-risk hazards, CCP monitoring completion, overdue verification, expired validation.
+- Audit readiness: required evidence complete, missing records by control area, unresolved internal audit findings.
+- Production discipline: batch records completed, release reviews pending, CCP deviations by product/line.
+- Traceability: latest mock recall date, retrieval time, mass balance result, unresolved traceability gaps.
+- Supplier approval: approved suppliers current, expired certificates/specifications, high-risk suppliers due review.
+- Training: role-critical training completion, expired training, new SOPs awaiting acknowledgement.
+- Allergen risk: products with allergen changes, label approvals pending, cleaning verification failures.
+- CAPA: overdue actions, repeat root causes, effectiveness checks due.
+- Management review: last review date, open decisions/actions, KPI trend exceptions.
+
+### I. Audit Pack Contents
+
+Generate audit packs by site, product group, date range, standard/version and customer/auditor request.
+
+Core pack:
+
+- Standards mapping and applicability statement.
+- Current HACCP plan and change history.
+- Process flow diagram and verification evidence.
+- Hazard analysis and CCP decision records.
+- CCP critical limits, monitoring logs and deviation reports.
+- Verification and validation evidence index.
+- SOP register and latest approved SOPs.
+- Training matrix and role-critical training records.
+- Approved supplier list, specifications and certificates.
+- Batch production records for sampled batches.
+- Traceability test report and mass balance.
+- Cleaning, hygiene, pest-control, maintenance and calibration records.
+- Allergen matrix, label approvals and label check records.
+- Complaint, incident, non-conformance and CAPA logs.
+- Internal audit programme, findings and closure evidence.
+- Management review minutes and action tracker.
+- Recall and withdrawal procedure plus latest mock recall.
+
+Export controls:
+
+- Redact personal data where not needed.
+- Preserve evidence timestamps, owner, approval and version metadata.
+- Include source/version references and a disclaimer that Aquilens supports evidence and audit readiness but does not certify compliance.
+
+### J. Source List with Links and Access Dates
+
+Access date for this pack: 3 June 2026.
+
+- Food Standards Agency, HACCP business guidance: https://www.food.gov.uk/business-guidance/hazard-analysis-and-critical-control-point-haccp
+- Food Standards Agency, Safer Food Better Business: https://www.food.gov.uk/business-guidance/safer-food-better-business-sfbb
+- Food Standards Agency, allergen guidance for food businesses: https://www.food.gov.uk/business-guidance/allergen-guidance-for-food-businesses
+- Food Standards Agency, food incidents, product withdrawals and recalls: https://www.food.gov.uk/business-guidance/food-incidents-product-withdrawals-and-recalls
+- GOV.UK, Food safety: hazard analysis and critical control point food plan: https://www.gov.uk/food-safety-hazard-analysis
+- Codex Alimentarius, General Principles of Food Hygiene CXC 1-1969 and HACCP annex/principles: https://www.fao.org/fao-who-codexalimentarius/codex-texts/codes-of-practice/en/
+- SALSA official website: https://www.salsafood.co.uk/
+- SALSA official standard and scheme information pages: https://www.salsafood.co.uk/standard
+- SALSA Issue 7 change and transition information: https://www.salsafood.co.uk/new-standard-issues-2026
+- SALSA Food & Drink Production Audit Standard, Issue 7, June 2026: https://www.salsafood.co.uk/file/142-7cfa6c41-54cb-410a-b948-4e1b5a1c094a
+- BRCGS Global Standard Food Safety context: https://www.brcgs.com/our-standards/food-safety/
+
+### K. Risks, Assumptions and Areas Requiring Legal or Compliance Validation
+
+- SALSA standard text is controlled by SALSA. Aquilens should store summaries and customer-owned mappings unless licensed to store full clauses.
+- SALSA Issue 7 transition dates and requirements should be verified against the customer's official SALSA account or purchased/current standard before audit use.
+- HACCP critical limits must be validated for the actual product, equipment, recipe, pH, water activity, shelf life and intended consumer group. Aquilens can manage evidence but cannot decide technical adequacy without competent food safety review.
+- Allergen labelling, claims, nutrition, alcohol content, additives and compositional requirements need product-specific regulatory review.
+- Recall/withdrawal decisions may require regulatory notification or customer notification; Aquilens should support decision logs and escalation, not replace expert judgement.
+- Local authority expectations can vary by business activity, history and risk rating.
+- BRCGS references are contextual only. Do not represent SALSA readiness as equivalent to BRCGS certification.
 
 ---
 
@@ -2165,6 +2528,8 @@ Every generated evidence pack should include:
 - School inspection toolkit: https://www.gov.uk/government/publications/school-inspection-toolkit-operating-guide-and-information
 - Food Standards Agency HACCP: https://www.food.gov.uk/business-guidance/hazard-analysis-and-critical-control-point-haccp
 - Food Standards Agency SFBB: https://www.food.gov.uk/business-guidance/safer-food-better-business-sfbb
+- Food Standards Agency allergen guidance: https://www.food.gov.uk/business-guidance/allergen-guidance-for-food-businesses
+- Food Standards Agency food incidents, withdrawals and recalls: https://www.food.gov.uk/business-guidance/food-incidents-product-withdrawals-and-recalls
 - GOV.UK HACCP food plan: https://www.gov.uk/food-safety-hazard-analysis
 
 ## Ghana Sources
@@ -2176,6 +2541,10 @@ Every generated evidence pack should include:
 
 ## Food Scheme Sources
 
+- SALSA official website: https://www.salsafood.co.uk/
+- SALSA standard page: https://www.salsafood.co.uk/standard
+- SALSA Issue 7 change and transition page: https://www.salsafood.co.uk/new-standard-issues-2026
+- SALSA Food & Drink Production Audit Standard Issue 7: https://www.salsafood.co.uk/file/142-7cfa6c41-54cb-410a-b948-4e1b5a1c094a
 - BRCGS Food Safety: https://www.brcgs.com/our-standards/food-safety/
 - BRCGS main site: https://www.brcgs.com/
 
