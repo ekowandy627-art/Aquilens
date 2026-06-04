@@ -1,9 +1,10 @@
+import { normalizePlatformRole, type PlatformRole } from "@aquilens/shared";
 import { SignJWT, jwtVerify } from "jose";
 import { SESSION_TIMEOUTS } from "../constants";
 
 export type PlatformJwtPayload = {
   userId: string;
-  role: "super_admin" | "support_staff";
+  role: PlatformRole;
   type: "access" | "refresh";
 };
 
@@ -35,14 +36,16 @@ async function verifyToken(token: string) {
   if (typeof userId !== "string") {
     throw new Error("Invalid token");
   }
-  if (role !== "super_admin" && role !== "support_staff") {
+  const normalized =
+    typeof role === "string" ? normalizePlatformRole(role) : null;
+  if (!normalized) {
     throw new Error("Invalid token role");
   }
   if (type !== "access" && type !== "refresh") {
     throw new Error("Invalid token type");
   }
 
-  return { userId, role, type } as PlatformJwtPayload;
+  return { userId, role: normalized, type } as PlatformJwtPayload;
 }
 
 export async function signPlatformAccessToken(

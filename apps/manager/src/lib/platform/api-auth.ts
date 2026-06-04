@@ -1,17 +1,26 @@
+import {
+  normalizePlatformRole,
+  type PlatformRole,
+} from "@aquilens/shared";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 export type PlatformApiContext = {
   userId: string;
-  role: "super_admin" | "support_staff";
+  role: PlatformRole;
 };
 
 export async function getPlatformContext(): Promise<PlatformApiContext | null> {
   const h = await headers();
   const userId = h.get("x-platform-user-id");
-  const role = h.get("x-platform-user-role");
+  const roleHeader = h.get("x-platform-user-role");
 
-  if (!userId || (role !== "super_admin" && role !== "support_staff")) {
+  if (!userId || !roleHeader) {
+    return null;
+  }
+
+  const role = normalizePlatformRole(roleHeader);
+  if (!role) {
     return null;
   }
 

@@ -1,3 +1,4 @@
+import { normalizePlatformRole } from "@aquilens/shared";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
       id: string;
       email: string;
       full_name: string;
-      role: "super_admin" | "support_staff";
+      role: string;
       status: string;
       password_hash: string;
     }>();
@@ -49,6 +50,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
+  const platformRole = normalizePlatformRole(user.role);
+  if (!platformRole) {
+    return NextResponse.json({ error: "Invalid account role" }, { status: 403 });
+  }
+
   await supabase
     .from("platform_users")
     .update({ last_login_at: new Date().toISOString() })
@@ -56,7 +62,7 @@ export async function POST(req: Request) {
 
   const accessToken = await signPlatformAccessToken({
     userId: user.id,
-    role: user.role,
+    role: platformRole,
   });
 
   const response = NextResponse.json({
@@ -64,7 +70,7 @@ export async function POST(req: Request) {
       id: user.id,
       email: user.email,
       fullName: user.full_name,
-      role: user.role,
+      role: platformRole,
     },
   });
 

@@ -40,6 +40,14 @@ export {
 } from "./jurisdictions";
 
 export {
+  PLATFORM_ROLES,
+  LEGACY_SUPPORT_ROLE,
+  normalizePlatformRole,
+  isPlatformRole,
+  type PlatformRole,
+} from "./platform-roles";
+
+export {
   EVIDENCE_MAP_MODES,
   EVIDENCE_MAP_MODE_LABELS,
   emptyEvidenceMap,

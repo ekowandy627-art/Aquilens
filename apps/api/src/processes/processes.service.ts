@@ -467,15 +467,24 @@ export class ProcessesService {
 
     const supabase = getSupabaseForUser(user);
     if (!supabase) {
-      const normalized = {
-        ...patch,
-        operatingJurisdictions: patch.operatingJurisdictions
-          ? normalizeJurisdictionList(patch.operatingJurisdictions)
-          : undefined,
-        outputMarketJurisdictions: patch.outputMarketJurisdictions
-          ? normalizeJurisdictionList(patch.outputMarketJurisdictions)
-          : undefined,
-      };
+      const normalized: UpdateProcessInput = { ...patch };
+      if (patch.operatingJurisdictions !== undefined) {
+        normalized.operatingJurisdictions = normalizeJurisdictionList(
+          patch.operatingJurisdictions,
+        );
+      }
+      if (patch.outputMarketJurisdictions !== undefined) {
+        normalized.outputMarketJurisdictions = normalizeJurisdictionList(
+          patch.outputMarketJurisdictions,
+        );
+      }
+      if (
+        normalized.jurisdictionsInheritOrg === undefined &&
+        (normalized.operatingJurisdictions !== undefined ||
+          normalized.outputMarketJurisdictions !== undefined)
+      ) {
+        normalized.jurisdictionsInheritOrg = false;
+      }
       const updated = this.demo.updateProcess(
         user.tenantId,
         processId,
@@ -521,9 +530,6 @@ export class ProcessesService {
     if (patch.acknowledgementRequired !== undefined)
       payload.acknowledgement_required = patch.acknowledgementRequired;
     if (patch.status !== undefined) payload.status = patch.status;
-    if (patch.jurisdictionsInheritOrg !== undefined) {
-      payload.jurisdictions_inherit_org = patch.jurisdictionsInheritOrg;
-    }
     if (patch.operatingJurisdictions !== undefined) {
       payload.operating_jurisdictions = normalizeJurisdictionList(
         patch.operatingJurisdictions,
@@ -533,6 +539,14 @@ export class ProcessesService {
       payload.output_market_jurisdictions = normalizeJurisdictionList(
         patch.outputMarketJurisdictions,
       );
+    }
+    if (patch.jurisdictionsInheritOrg !== undefined) {
+      payload.jurisdictions_inherit_org = patch.jurisdictionsInheritOrg;
+    } else if (
+      patch.operatingJurisdictions !== undefined ||
+      patch.outputMarketJurisdictions !== undefined
+    ) {
+      payload.jurisdictions_inherit_org = false;
     }
 
     const { error } = await supabase
@@ -1580,7 +1594,11 @@ export class ProcessesService {
       jurisdictionsInheritOrg?: boolean;
     },
   ) {
-    const inherit = process.jurisdictionsInheritOrg !== false;
+    const hasStoredJurisdictions =
+      (process.operatingJurisdictions?.length ?? 0) > 0 ||
+      (process.outputMarketJurisdictions?.length ?? 0) > 0;
+    const inherit =
+      process.jurisdictionsInheritOrg !== false && !hasStoredJurisdictions;
     if (!inherit) {
       return {
         operatingJurisdictions: normalizeJurisdictionList(

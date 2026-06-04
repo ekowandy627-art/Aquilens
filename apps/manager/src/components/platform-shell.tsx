@@ -2,13 +2,26 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, BookOpen, LayoutDashboard, LogOut } from "lucide-react";
+import {
+  Activity,
+  BookOpen,
+  Bot,
+  Building2,
+  LayoutDashboard,
+  LogOut,
+  ScrollText,
+  TrendingUp,
+} from "lucide-react";
 import { clsx } from "clsx";
 
 const nav = [
   { href: "/platform", label: "Dashboard", icon: LayoutDashboard },
   { href: "/platform/tenants", label: "Tenants", icon: Building2 },
-  { href: "/platform/standards", label: "Standards packs", icon: BookOpen },
+  { href: "/platform/agents", label: "Agents", icon: Bot },
+  { href: "/platform/standards", label: "Standards", icon: BookOpen },
+  { href: "/platform/ai-usage", label: "AI usage", icon: Activity },
+  { href: "/platform/audit", label: "Audit", icon: ScrollText },
+  { href: "/platform/benchmarks", label: "Benchmarks", icon: TrendingUp },
 ];
 
 export function PlatformShell({ children }: { children: React.ReactNode }) {

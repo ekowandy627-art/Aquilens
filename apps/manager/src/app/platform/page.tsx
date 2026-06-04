@@ -13,7 +13,7 @@ export default function PlatformDashboardPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link
             href="/platform/tenants"
             className="rounded-md border border-border bg-white p-4 hover:border-brand-teal"
@@ -24,12 +24,48 @@ export default function PlatformDashboardPage() {
             </p>
           </Link>
           <Link
+            href="/platform/agents"
+            className="rounded-md border border-border bg-white p-4 hover:border-brand-teal"
+          >
+            <h3 className="font-medium">Agents</h3>
+            <p className="mt-1 text-sm text-text-muted">
+              Platform AI pipelines, prompts, and MTD usage.
+            </p>
+          </Link>
+          <Link
             href="/platform/standards"
             className="rounded-md border border-border bg-white p-4 hover:border-brand-teal"
           >
-            <h3 className="font-medium">Standards packs</h3>
+            <h3 className="font-medium">Standards</h3>
             <p className="mt-1 text-sm text-text-muted">
-              Activate or retire guidance packs in the global library.
+              Global guidance library and publish workflow.
+            </p>
+          </Link>
+          <Link
+            href="/platform/ai-usage"
+            className="rounded-md border border-border bg-white p-4 hover:border-brand-teal"
+          >
+            <h3 className="font-medium">AI usage</h3>
+            <p className="mt-1 text-sm text-text-muted">
+              Cross-tenant spend and budget posture.
+            </p>
+          </Link>
+          <Link
+            href="/platform/audit"
+            className="rounded-md border border-border bg-white p-4 hover:border-brand-teal"
+          >
+            <h3 className="font-medium">Audit</h3>
+            <p className="mt-1 text-sm text-text-muted">
+              Platform operator actions and support access.
+            </p>
+          </Link>
+          <Link
+            href="/platform/benchmarks"
+            className="rounded-md border border-border bg-white p-4 hover:border-brand-teal"
+          >
+            <h3 className="font-medium">Benchmarks</h3>
+            <p className="mt-1 text-sm text-text-muted">
+              Median AI cost and active-user benchmarks.
             </p>
           </Link>
         </div>

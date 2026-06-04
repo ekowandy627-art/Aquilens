@@ -90,7 +90,14 @@ export default function TenantsPage() {
             <tbody>
               {items.map((tenant) => (
                 <tr key={tenant.tenantId} className="border-t border-border">
-                  <td className="px-4 py-3 font-medium">{tenant.name}</td>
+                  <td className="px-4 py-3 font-medium">
+                    <Link
+                      href={`/platform/tenants/${tenant.tenantId}`}
+                      className="hover:text-brand-teal"
+                    >
+                      {tenant.name}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs">{tenant.slug}</td>
                   <td className="px-4 py-3">{tenant.institutionType}</td>
                   <td className="px-4 py-3">

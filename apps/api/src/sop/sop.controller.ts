@@ -21,6 +21,12 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequirePermission } from "../auth/require-permission.decorator";
 import type { AuthUser } from "../auth/auth.types";
+import { AiQuotaService } from "../platform-ops/ai-quota.service";
+import {
+  isPlatformBlockedError,
+  PlatformBlockedException,
+} from "../platform-ops/platform-error";
+import { WallNoticeService } from "../platform-ops/wall-notice.service";
 import { SopGenerationService } from "./sop-generation.service";
 import { SopComposeService } from "./sop-compose.service";
 import { SopResolutionsService } from "./sop-resolutions.service";
@@ -42,7 +48,20 @@ export class SopController {
     @Inject(SopResolutionsService)
     private readonly resolutions: SopResolutionsService,
     @Inject(AuditService) private readonly audit: AuditService,
+    @Inject(AiQuotaService) private readonly aiQuota: AiQuotaService,
+    @Inject(WallNoticeService) private readonly wallNotice: WallNoticeService,
   ) {}
+
+  private async handleWallError(user: AuthUser, error: unknown): Promise<never> {
+    if (error instanceof PlatformBlockedException) {
+      const code = this.aiQuota.getWallCode(error);
+      if (code) {
+        await this.wallNotice.notifyWallHit(user, code);
+      }
+      throw error;
+    }
+    throw error;
+  }
 
   @Get("compose/suggestions")
   @RequirePermission("processes", "create")
@@ -89,7 +108,7 @@ export class SopController {
     }
 
     try {
-      const result = await this.compose.transcribe(file.buffer, file.mimetype);
+      const result = await this.compose.transcribe(user, file.buffer, file.mimetype);
       await this.audit.log(user, {
         eventType: "sop.transcribed",
         entityType: "SopArtifact",
@@ -99,6 +118,9 @@ export class SopController {
       });
       return { success: true, data: result };
     } catch (error) {
+      if (isPlatformBlockedError(error)) {
+        await this.handleWallError(user, error);
+      }
       const message =
         error instanceof Error ? error.message : "Transcription failed";
       throw new HttpException(
@@ -192,6 +214,9 @@ export class SopController {
 
       res.end();
     } catch (error) {
+      if (isPlatformBlockedError(error)) {
+        await this.handleWallError(user, error);
+      }
       const message = error instanceof Error ? error.message : "Compose failed";
       if (!res.headersSent) {
         throw new HttpException(
@@ -277,6 +302,8 @@ export class SopController {
         functionId: dto.functionId,
         processAreaId: dto.processAreaId,
         tenantContext: user.email,
+        tenantId: user.tenantId,
+        actorUserId: user.id,
       });
 
       await this.audit.log(user, {
@@ -302,6 +329,9 @@ export class SopController {
         },
       };
     } catch (error) {
+      if (isPlatformBlockedError(error)) {
+        await this.handleWallError(user, error);
+      }
       const message = error instanceof Error ? error.message : "Generation failed";
       const code =
         error instanceof Error && "code" in error && error.code === "RATE_LIMITED"

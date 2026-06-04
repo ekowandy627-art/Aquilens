@@ -1,4 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { createHash } from "crypto";
+import { AiQuotaService } from "../platform-ops/ai-quota.service";
+import { AiUsageService } from "../platform-ops/ai-usage.service";
+import { PlatformAiAgentRegistryService } from "../platform-ops/platform-ai-agent-registry.service";
 import {
   buildMockDraft,
   mergeGaps,
@@ -7,16 +11,53 @@ import {
   type GenerateSopResult,
 } from "./sop.types";
 
-const MODEL = "claude-sonnet-4-6";
+const AGENT_KEY = "sop_generate";
 
 @Injectable()
 export class SopGenerationService {
+  constructor(
+    @Inject(AiQuotaService) private readonly aiQuota: AiQuotaService,
+    @Inject(AiUsageService) private readonly aiUsage: AiUsageService,
+    @Inject(PlatformAiAgentRegistryService)
+    private readonly agentRegistry: PlatformAiAgentRegistryService,
+  ) {}
+
   async generate(input: GenerateSopInput): Promise<GenerateSopResult> {
+    if (input.tenantId) {
+      await this.aiQuota.assertAgentAllowed(input.tenantId, AGENT_KEY);
+    }
+
+    const prompt = await this.agentRegistry.getPrompt(AGENT_KEY);
+    const model = await this.agentRegistry.getDefaultModel(AGENT_KEY);
     const apiKey = process.env.ANTHROPIC_API_KEY;
+    const started = Date.now();
+    const inputCharCount = input.description.length;
+    const userContentHash = createHash("sha256")
+      .update(input.description)
+      .digest("hex")
+      .slice(0, 16);
 
     if (!apiKey) {
       const draft = normalizeGeneratedDraft(buildMockDraft(input));
       const gaps = mergeGaps(draft);
+      if (input.tenantId) {
+        await this.aiUsage.recordEvent({
+          tenantId: input.tenantId,
+          platformAgentKey: AGENT_KEY,
+          promptVersion: prompt.version,
+          model: "mock-claude-sonnet-4-6",
+          provider: "anthropic",
+          inputTokens: 0,
+          outputTokens: 0,
+          latencyMs: Date.now() - started,
+          success: true,
+          cacheHit: true,
+          jsonValid: true,
+          inputCharCount,
+          userContentHash,
+          actorUserId: input.actorUserId,
+        });
+      }
       return {
         draft,
         gaps,
@@ -29,49 +70,74 @@ export class SopGenerationService {
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const response = await this.callClaude(apiKey, input);
+        const response = await this.callClaude(apiKey, input, prompt.systemPrompt, model);
         const draft = normalizeGeneratedDraft(JSON.parse(response.text));
         const gaps = mergeGaps(draft);
+        if (input.tenantId) {
+          await this.aiUsage.recordEvent({
+            tenantId: input.tenantId,
+            platformAgentKey: AGENT_KEY,
+            promptVersion: prompt.version,
+            model,
+            provider: "anthropic",
+            inputTokens: response.inputTokens,
+            outputTokens: response.outputTokens,
+            latencyMs: Date.now() - started,
+            success: true,
+            jsonValid: true,
+            inputCharCount,
+            userContentHash,
+            actorUserId: input.actorUserId,
+          });
+        }
         return {
           draft,
           gaps,
-          model: MODEL,
-          tokensUsed: response.tokensUsed,
+          model,
+          tokensUsed: response.inputTokens + response.outputTokens,
         };
       } catch (error) {
         lastError = error instanceof Error ? error : new Error("Generation failed");
+        if (input.tenantId) {
+          await this.aiUsage.recordEvent({
+            tenantId: input.tenantId,
+            platformAgentKey: AGENT_KEY,
+            promptVersion: prompt.version,
+            model,
+            provider: "anthropic",
+            inputTokens: 0,
+            outputTokens: 0,
+            latencyMs: Date.now() - started,
+            success: false,
+            jsonValid: false,
+            inputCharCount,
+            userContentHash,
+            actorUserId: input.actorUserId,
+            errorCode: "GENERATION_FAILED",
+          });
+        }
       }
     }
 
     throw lastError ?? new Error("SOP generation failed");
   }
 
-  private async callClaude(apiKey: string, input: GenerateSopInput) {
-    const systemPrompt = `You are Aquilens, an institutional process documentation assistant.
-Return strictly valid JSON with this shape:
-{
-  "name": string,
-  "description": string,
-  "purpose": string,
-  "risk_rating": "high" | "medium" | "low",
-  "risk_notes": string,
-  "who_it_affects": string[],
-  "governance_controls": [{ "name": string, "type": "preventive"|"detective"|"corrective", "owner": string }],
-  "steps": [{
-    "step_number": number,
-    "title": string,
-    "description": string,
-    "responsible_role": string,
-    "inputs": string,
-    "outputs": string,
-    "controls": string,
-    "step_type": "manual" | "approval",
-    "evidence_required": boolean
-  }],
-  "gaps": [{ "field": string, "severity": "required"|"recommended", "message": string }]
-}
-Include at least one required gap for owner assignment and one required gap asking the user to confirm risk rating.
-Do not wrap JSON in markdown fences.`;
+  private async callClaude(
+    apiKey: string,
+    input: GenerateSopInput,
+    systemPrompt: string,
+    model: string,
+  ) {
+    const userPrompt = this.agentRegistry.renderUserPrompt(
+      (await this.agentRegistry.getPrompt(AGENT_KEY)).userPromptTemplate ||
+        `Process description:\n{{description}}`,
+      {
+        tenantContext: input.tenantContext ?? "Unknown institution",
+        functionId: input.functionId,
+        processAreaId: input.processAreaId,
+        description: input.description,
+      },
+    );
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -81,26 +147,13 @@ Do not wrap JSON in markdown fences.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: MODEL,
+        model,
         max_tokens: 4096,
         system: systemPrompt,
         messages: [
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Tenant context: ${input.tenantContext ?? "Unknown institution"}`,
-              },
-              {
-                type: "text",
-                text: `Function ID: ${input.functionId}\nProcess area ID: ${input.processAreaId}`,
-              },
-              {
-                type: "text",
-                text: `Process description:\n${input.description}`,
-              },
-            ],
+            content: [{ type: "text", text: userPrompt }],
           },
         ],
       }),
@@ -125,8 +178,8 @@ Do not wrap JSON in markdown fences.`;
 
     return {
       text: cleaned,
-      tokensUsed:
-        (payload.usage?.input_tokens ?? 0) + (payload.usage?.output_tokens ?? 0),
+      inputTokens: payload.usage?.input_tokens ?? 0,
+      outputTokens: payload.usage?.output_tokens ?? 0,
     };
   }
 }

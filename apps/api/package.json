@@ -7,7 +7,8 @@
     "build": "npm run build --workspace=@aquilens/shared && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "NODE_ENV=test tsx --test test/*.test.ts"
+    "test": "NODE_ENV=test tsx --test test/*.test.ts",
+    "seed:mvp-guidance": "tsx scripts/seed-mvp-guidance-packs.ts"
   },
   "dependencies": {
     "@aquilens/shared": "*",

@@ -1,6 +1,9 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { HttpException, Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
+import { TenantPlatformConfigService } from "../platform-ops/tenant-platform-config.service";
+import { usePlatformOpsDemoStore } from "../platform-ops/platform-ops-env";
+import { AiUsageService } from "../platform-ops/ai-usage.service";
 import { demoSchoolScaffold } from "../tenants/demo-scaffold";
 
 type InstitutionType =
@@ -99,10 +102,34 @@ const ROLE_TEMPLATES = [
     systemKey: "staff",
     permissions: ["processes:read", "training:complete"],
   },
+  {
+    name: "Aquilens Support",
+    systemKey: "aquilens-support",
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "audit:read",
+      "standards:read",
+      "agents:read",
+      "incidents:read",
+      "users:read",
+    ],
+  },
 ];
+
+export const AQUILENS_SUPPORT_SYSTEM_KEY = "aquilens-support";
+
+export function supportUserEmailForSlug(slug: string) {
+  return `support+${slug}@platform.aquilens.internal`;
+}
 
 @Injectable()
 export class InternalTenantsService {
+  constructor(
+    @Inject(TenantPlatformConfigService)
+    private readonly platformConfig: TenantPlatformConfigService,
+    @Inject(AiUsageService) private readonly aiUsage: AiUsageService,
+  ) {}
   lookupBySlug(slug: string): TenantLookupResult | null {
     const normalized = slug.trim().toLowerCase();
     const supabase = getSupabaseAdminClient();
@@ -154,12 +181,23 @@ export class InternalTenantsService {
   async listTenants() {
     const supabase = getSupabaseAdminClient();
 
-    if (!supabase) {
-      return DEMO_TENANTS.map((tenant) => ({
-        ...tenant,
-        createdAt: new Date().toISOString(),
-        userCount: 0,
-      }));
+    if (!supabase || usePlatformOpsDemoStore()) {
+      const items = await Promise.all(
+        DEMO_TENANTS.map(async (tenant) => {
+          const config = await this.platformConfig.getConfig(tenant.tenantId);
+          const mtdCostUsd = await this.aiUsage.getMtdCostUsd(tenant.tenantId);
+          return {
+            ...tenant,
+            createdAt: new Date().toISOString(),
+            userCount: 0,
+            mtdCostUsd,
+            aiBudgetUsd: config?.aiMonthlyBudgetUsd ?? null,
+            lifecycleState: config?.lifecycleState ?? "active",
+            healthScore: null,
+          };
+        }),
+      );
+      return items;
     }
 
     const { data: tenants } = await supabase
@@ -187,7 +225,26 @@ export class InternalTenantsService {
       country: tenant.country,
       createdAt: tenant.created_at as string,
       userCount: counts[index] ?? 0,
+      mtdCostUsd: 0,
+      aiBudgetUsd: null,
+      lifecycleState: "active",
+      healthScore: null,
     }));
+  }
+
+  async patchPlatformConfig(
+    tenantId: string,
+    patch: {
+      aiMonthlyBudgetUsd?: number | null;
+      markupMultiplier?: number | null;
+      lifecycleState?: "trial" | "active" | "suspended" | "offboarding";
+      featureFlags?: Record<string, boolean>;
+      planLabel?: string;
+      notes?: string;
+    },
+  ) {
+    const config = await this.platformConfig.upsertConfig(tenantId, patch);
+    return config;
   }
 
   async updateTenantStatus(tenantId: string, status: "active" | "suspended") {
@@ -285,13 +342,80 @@ export class InternalTenantsService {
       });
     }
 
+    await this.platformConfig.upsertConfig(tenantId, {
+      aiMonthlyBudgetUsd: null,
+      lifecycleState: "trial",
+    });
+
+    const support = await this.provisionSupportUser(supabase, tenantId, slug);
+
     return {
       tenantId,
       slug,
       name: dto.name.trim(),
       adminEmail: dto.adminEmail.trim().toLowerCase(),
       temporaryPassword: dto.adminPassword ? undefined : password,
+      supportEmail: support.email,
     };
+  }
+
+  async provisionSupportUser(
+    supabase: NonNullable<ReturnType<typeof getSupabaseAdminClient>>,
+    tenantId: string,
+    slug: string,
+  ) {
+    const email = supportUserEmailForSlug(slug);
+    const { data: existing } = await supabase
+      .from("users")
+      .select("id, email")
+      .eq("tenant_id", tenantId)
+      .eq("email", email)
+      .maybeSingle<{ id: string; email: string }>();
+
+    if (existing) {
+      return { userId: existing.id, email: existing.email };
+    }
+
+    const supportPassword = randomUUID();
+    const { data: authUser, error: authError } =
+      await supabase.auth.admin.createUser({
+        email,
+        password: supportPassword,
+        email_confirm: true,
+        user_metadata: { full_name: "Aquilens Platform Support" },
+      });
+
+    if (authError || !authUser.user) {
+      throw new HttpException(
+        authError?.message ?? "Failed to create support user",
+        500,
+      );
+    }
+
+    await supabase.from("users").insert({
+      id: authUser.user.id,
+      tenant_id: tenantId,
+      full_name: "Aquilens Platform Support",
+      email,
+      status: "active",
+    });
+
+    const { data: supportRole } = await supabase
+      .from("roles")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .eq("system_key", AQUILENS_SUPPORT_SYSTEM_KEY)
+      .maybeSingle<{ id: string }>();
+
+    if (supportRole) {
+      await supabase.from("user_roles").insert({
+        user_id: authUser.user.id,
+        role_id: supportRole.id,
+        tenant_id: tenantId,
+      });
+    }
+
+    return { userId: authUser.user.id, email };
   }
 
   private async seedRoles(

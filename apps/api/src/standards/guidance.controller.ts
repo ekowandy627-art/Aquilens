@@ -26,14 +26,15 @@ export class GuidanceController {
 
   @Get("packs")
   @RequirePermission("standards", "read")
-  listPacks(
+  async listPacks(
     @CurrentUser() user: AuthUser,
     @Query("sector") sector?: string,
     @Query("jurisdiction") jurisdiction?: string,
   ) {
+    const data = await this.standards.listPacks(user, { sector, jurisdiction });
     return {
       success: true,
-      data: this.standards.listPacks(user, { sector, jurisdiction }),
+      data,
     };
   }
 

@@ -39,6 +39,8 @@ export type GenerateSopInput = {
   functionId: string;
   processAreaId: string;
   tenantContext?: string;
+  tenantId?: string;
+  actorUserId?: string;
 };
 
 export type GenerateSopResult = {

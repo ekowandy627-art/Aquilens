@@ -5,8 +5,12 @@ import { useRouter } from "next/navigation";
 
 export default function PlatformLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("platform-admin@aquilens.test");
-  const [password, setPassword] = useState("AquilensPlatform2024!");
+  const [email, setEmail] = useState(
+    process.env.NODE_ENV === "production" ? "" : "platform-admin@aquilens.test",
+  );
+  const [password, setPassword] = useState(
+    process.env.NODE_ENV === "production" ? "" : "AquilensPlatform2024!",
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

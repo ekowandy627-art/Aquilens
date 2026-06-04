@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Building2, ClipboardCheck, Database, GitBranch, Shield, Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { TenantAiUsageWidget } from "@/components/tenant-ai-usage-widget";
 
 const tabs = [
   {
@@ -66,6 +67,10 @@ export default function SettingsPage() {
         title="Settings"
         description="Tenant configuration, access governance, escalation rules, and data portability controls."
       />
+
+      <div className="mb-6 max-w-md">
+        <TenantAiUsageWidget />
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {tabs.map((tab) => {

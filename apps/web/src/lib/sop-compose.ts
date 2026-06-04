@@ -1,4 +1,17 @@
 import { resolveAuthToken } from "@/lib/api-client";
+import {
+  handleBlockedResponse,
+  type PlatformWallError,
+} from "@/lib/platform-wall";
+
+export type { PlatformWallError };
+
+export class PlatformWallErrorException extends Error {
+  constructor(public readonly wall: PlatformWallError) {
+    super(wall.message ?? "Action blocked");
+    this.name = "PlatformWallErrorException";
+  }
+}
 
 const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api/v1";
@@ -61,13 +74,22 @@ export async function transcribeAudio(blob: Blob): Promise<{
     body: form,
   });
 
+  if (!response.ok) {
+    const blocked = await handleBlockedResponse(response);
+    if (blocked.blocked) {
+      throw new PlatformWallErrorException(blocked.error);
+    }
+    const errBody = blocked.body as { error?: { message?: string } } | null;
+    throw new Error(errBody?.error?.message ?? "Transcription failed");
+  }
+
   const body = (await response.json()) as {
     success: boolean;
     data?: { transcript: string; artifactId: string };
     error?: { message?: string };
   };
 
-  if (!response.ok || !body.success || !body.data) {
+  if (!body.success || !body.data) {
     throw new Error(body.error?.message ?? "Transcription failed");
   }
 
@@ -99,9 +121,11 @@ export async function streamSopCompose(
   });
 
   if (!response.ok) {
-    const errBody = (await response.json().catch(() => null)) as {
-      error?: { message?: string };
-    } | null;
+    const blocked = await handleBlockedResponse(response);
+    if (blocked.blocked) {
+      throw new PlatformWallErrorException(blocked.error);
+    }
+    const errBody = blocked.body as { error?: { message?: string } } | null;
     throw new Error(errBody?.error?.message ?? "Compose stream failed");
   }
 

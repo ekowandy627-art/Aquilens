@@ -1,9 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { createHash } from "crypto";
+import type { AuthUser } from "../auth/auth.types";
+import { AiQuotaService } from "../platform-ops/ai-quota.service";
+import { AiUsageService } from "../platform-ops/ai-usage.service";
+import { PlatformAiAgentRegistryService } from "../platform-ops/platform-ai-agent-registry.service";
 import { guidanceDemoStore } from "../standards/guidance-demo.store";
 import { StandardsService } from "../standards/standards.service";
-import type { AuthUser } from "../auth/auth.types";
-import { SopGenerationService } from "./sop-generation.service";
 import {
   buildMockDraft,
   mergeGaps,
@@ -18,6 +20,11 @@ import type {
   ComposedStep,
 } from "./sop-compose.types";
 
+import { SopGenerationService } from "./sop-generation.service";
+
+const TRANSCRIBE_AGENT = "sop_transcribe";
+const COMPOSE_AGENT = "sop_compose_align";
+
 @Injectable()
 export class SopComposeService {
   constructor(
@@ -25,6 +32,10 @@ export class SopComposeService {
     private readonly generation: SopGenerationService,
     @Inject(StandardsService)
     private readonly standards: StandardsService,
+    @Inject(AiQuotaService) private readonly aiQuota: AiQuotaService,
+    @Inject(AiUsageService) private readonly aiUsage: AiUsageService,
+    @Inject(PlatformAiAgentRegistryService)
+    private readonly agentRegistry: PlatformAiAgentRegistryService,
   ) {}
 
   suggestStandards(user: AuthUser, functionId: string) {
@@ -63,13 +74,33 @@ export class SopComposeService {
   }
 
   async transcribe(
+    user: AuthUser,
     audio: Buffer,
     mimeType: string,
   ): Promise<{ transcript: string; artifactId: string }> {
+    await this.aiQuota.assertAgentAllowed(user.tenantId, TRANSCRIBE_AGENT);
+
     const artifactId = `audio-${Date.now()}`;
     const apiKey = process.env.OPENAI_API_KEY;
+    const started = Date.now();
+    const model = await this.agentRegistry.getDefaultModel(TRANSCRIBE_AGENT);
+    const prompt = await this.agentRegistry.getPrompt(TRANSCRIBE_AGENT);
 
     if (!apiKey) {
+      await this.aiUsage.recordEvent({
+        tenantId: user.tenantId,
+        platformAgentKey: TRANSCRIBE_AGENT,
+        promptVersion: prompt.version,
+        model: "mock-whisper-1",
+        provider: "openai",
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: Date.now() - started,
+        success: true,
+        cacheHit: true,
+        inputCharCount: audio.length,
+        actorUserId: user.id,
+      });
       return {
         artifactId,
         transcript:
@@ -90,13 +121,43 @@ export class SopComposeService {
 
     if (!response.ok) {
       const body = await response.text();
+      await this.aiUsage.recordEvent({
+        tenantId: user.tenantId,
+        platformAgentKey: TRANSCRIBE_AGENT,
+        promptVersion: prompt.version,
+        model,
+        provider: "openai",
+        inputTokens: 0,
+        outputTokens: 0,
+        latencyMs: Date.now() - started,
+        success: false,
+        inputCharCount: audio.length,
+        actorUserId: user.id,
+        errorCode: "TRANSCRIBE_FAILED",
+      });
       throw new Error(`OpenAI transcription failed (${response.status}): ${body}`);
     }
 
     const payload = (await response.json()) as { text?: string };
+    const transcript = payload.text?.trim() || "";
+    await this.aiUsage.recordEvent({
+      tenantId: user.tenantId,
+      platformAgentKey: TRANSCRIBE_AGENT,
+      promptVersion: prompt.version,
+      model: "whisper-1",
+      provider: "openai",
+      inputTokens: Math.ceil(audio.length / 4),
+      outputTokens: transcript.length,
+      latencyMs: Date.now() - started,
+      success: true,
+      inputCharCount: audio.length,
+      userContentHash: createHash("sha256").update(transcript).digest("hex").slice(0, 16),
+      actorUserId: user.id,
+    });
+
     return {
       artifactId,
-      transcript: payload.text?.trim() || "",
+      transcript,
     };
   }
 
@@ -107,6 +168,8 @@ export class SopComposeService {
     if (!input.confirmedPackIds?.length) {
       throw new Error("Confirm at least one standards pack before composing.");
     }
+
+    await this.aiQuota.assertAgentAllowed(user.tenantId, COMPOSE_AGENT);
 
     const description = this.buildDescription(input.artifacts, input.resolutions);
     if (!description.trim()) {
@@ -120,6 +183,8 @@ export class SopComposeService {
       functionId: input.functionId,
       processAreaId: input.processAreaId,
       tenantContext: input.tenantContext ?? user.email,
+      tenantId: user.tenantId,
+      actorUserId: user.id,
     });
 
     const draft = normalizeGeneratedDraft(generated.draft);

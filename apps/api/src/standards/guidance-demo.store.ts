@@ -232,6 +232,61 @@ export class GuidanceDemoStore {
     pack.isActive = isActive;
     return pack;
   }
+
+  createPack(pack: GuidancePackRecord) {
+    state.packs.set(pack.id, pack);
+    state.packsBySlug.set(pack.slug, pack);
+    return pack;
+  }
+
+  updatePack(packId: string, patch: Partial<GuidancePackRecord>) {
+    const pack = state.packs.get(packId);
+    if (!pack) {
+      return null;
+    }
+    Object.assign(pack, patch);
+    if (patch.slug) {
+      state.packsBySlug.set(pack.slug, pack);
+    }
+    return pack;
+  }
+
+  addRequirement(requirement: GuidanceRequirementRecord) {
+    state.requirements.set(requirement.id, requirement);
+    const rows = state.requirementsByPack.get(requirement.packId) ?? [];
+    rows.push(requirement);
+    state.requirementsByPack.set(
+      requirement.packId,
+      rows.toSorted((a, b) => a.sortOrder - b.sortOrder),
+    );
+    return requirement;
+  }
+
+  updateRequirement(
+    packId: string,
+    reqId: string,
+    patch: Partial<GuidanceRequirementRecord>,
+  ) {
+    const existing = state.requirements.get(reqId);
+    if (!existing || existing.packId !== packId) {
+      return null;
+    }
+    Object.assign(existing, patch);
+    return existing;
+  }
+
+  deleteRequirement(packId: string, reqId: string) {
+    const existing = state.requirements.get(reqId);
+    if (!existing || existing.packId !== packId) {
+      return null;
+    }
+    state.requirements.delete(reqId);
+    const rows = (state.requirementsByPack.get(packId) ?? []).filter(
+      (row) => row.id !== reqId,
+    );
+    state.requirementsByPack.set(packId, rows);
+    return true;
+  }
 }
 
 export const guidanceDemoStore = new GuidanceDemoStore();

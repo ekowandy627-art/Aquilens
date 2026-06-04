@@ -7,6 +7,7 @@ import { processDemoStore } from "../processes/process-demo.store";
 import { trainingDemoStore } from "../training/training-demo.store";
 import { WorkflowEngineService } from "../workflows/workflow-engine.service";
 import { notificationDemoStore } from "../notifications/notification-demo.store";
+import { guidanceDemoStore } from "../standards/guidance-demo.store";
 
 @Injectable()
 export class InternalCronService {
@@ -104,5 +105,37 @@ export class InternalCronService {
       entityId: "readiness",
     });
     return { readiness, notificationsSent: 1 };
+  }
+
+  runStandardsWatch() {
+    const tenants = ["tenant-gis", "tenant-mfg", "tenant-hospital"];
+    let notificationsCreated = 0;
+
+    for (const tenantId of tenants) {
+      const selections = guidanceDemoStore.listSelections(tenantId);
+      for (const selection of selections) {
+        const pinned = guidanceDemoStore.getPackById(selection.packId);
+        if (!pinned) continue;
+        const latest = guidanceDemoStore
+          .listAllPacks()
+          .filter((p) => p.slug.startsWith(pinned.slug.split("-v")[0] ?? pinned.slug))
+          .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+        if (!latest || latest.id === pinned.id || !latest.isActive) continue;
+
+        notificationDemoStore.create({
+          tenantId,
+          userId: "user-gis-owner",
+          type: "standards_update_available",
+          title: `${latest.name} — new version available`,
+          body: "A newer published standards version is available. Review in Standards → Updates.",
+          entityType: "guidance_pack",
+          entityId: latest.id,
+          entityName: latest.name,
+        });
+        notificationsCreated += 1;
+      }
+    }
+
+    return { tenantsChecked: tenants.length, notificationsCreated };
   }
 }

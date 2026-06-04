@@ -1,0 +1,25 @@
+approved: true
+plan_slug: manager-control-plane
+plan_file: /Users/chalefromghana/.cursor/plans/manager_control_plane_49d002ba.plan.md
+project_folder: /Users/chalefromghana/Projects/Aquilens
+
+test_locations:
+  - apps/api/test/
+  - apps/web/e2e/
+
+source_roots:
+  - apps/api/src/
+  - apps/manager/src/
+  - apps/web/src/
+  - supabase/migrations/
+  - packages/shared/
+
+documentation_locations:
+  - apps/manager/MANAGER_APP_SPEC.md
+  - apps/manager/README.md
+
+notes: |
+  Manager Control Plane — 8 milestones (M1–M8).
+  Source of truth: manager_control_plane_49d002ba.plan.md.
+  Live product: Supabase source of truth in deployed envs; in-memory stores test/local only.
+  Autonomous gated execution with code review skill after each Tester pass.

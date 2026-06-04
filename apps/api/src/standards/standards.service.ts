@@ -12,7 +12,7 @@ import { getSupabaseForUser } from "../demo/demo-data-mode";
 import { processDemoStore } from "../processes/process-demo.store";
 import { guidanceDemoStore } from "./guidance-demo.store";
 import { StandardsRecommendationService } from "./standards-recommendation.service";
-import type { OrganisationProfile } from "./guidance.types";
+import type { OrganisationProfile, GuidancePackRecord } from "./guidance.types";
 
 @Injectable()
 export class StandardsService {
@@ -22,7 +22,7 @@ export class StandardsService {
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
-  listPacks(
+  async listPacks(
     user: AuthUser,
     filters?: { sector?: string; jurisdiction?: string },
   ) {
@@ -30,7 +30,62 @@ export class StandardsService {
     if (!supabase) {
       return guidanceDemoStore.listPacksVisibleToTenant(user.tenantId, filters);
     }
-    return guidanceDemoStore.listPacksVisibleToTenant(user.tenantId, filters);
+    return this.listPacksFromSupabase(supabase, user.tenantId, filters);
+  }
+
+  private async listPacksFromSupabase(
+    supabase: NonNullable<ReturnType<typeof getSupabaseForUser>>,
+    tenantId: string,
+    filters?: { sector?: string; jurisdiction?: string },
+  ) {
+    const demoFallback = guidanceDemoStore.listPacksVisibleToTenant(
+      tenantId,
+      filters,
+    );
+    return supabase
+      .from("guidance_packs")
+      .select(
+        "id, slug, name, pack_type, sector, jurisdiction, version_label, effective_date, disclaimer, summary, is_active, created_at",
+      )
+      .eq("is_active", true)
+      .then(({ data, error }) => {
+        if (error || !data?.length) {
+          return demoFallback;
+        }
+        let rows = data.map((row) => ({
+          id: row.id as string,
+          slug: row.slug as string,
+          name: row.name as string,
+          packType: row.pack_type as GuidancePackRecord["packType"],
+          sector: (row.sector as string[]) ?? [],
+          jurisdiction: (row.jurisdiction as string[]) ?? [],
+          versionLabel: row.version_label as string,
+          effectiveDate: row.effective_date as string,
+          disclaimer: (row.disclaimer as string) ?? "",
+          summary: (row.summary as string) ?? "",
+          isActive: Boolean(row.is_active),
+          createdAt: (row.created_at as string) ?? new Date().toISOString(),
+        }));
+        if (filters?.sector) {
+          const sector = filters.sector.toLowerCase();
+          rows = rows.filter(
+            (pack) =>
+              pack.sector.includes("general") ||
+              pack.sector.some((value) => value.toLowerCase() === sector),
+          );
+        }
+        if (filters?.jurisdiction) {
+          const jurisdiction = filters.jurisdiction.toLowerCase();
+          rows = rows.filter(
+            (pack) =>
+              pack.jurisdiction.includes("global") ||
+              pack.jurisdiction.some(
+                (value) => value.toLowerCase() === jurisdiction,
+              ),
+          );
+        }
+        return rows.toSorted((a, b) => a.name.localeCompare(b.name));
+      });
   }
 
   getPackBySlug(user: AuthUser, slug: string) {
