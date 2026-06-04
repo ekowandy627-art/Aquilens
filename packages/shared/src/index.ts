@@ -30,3 +30,22 @@ export {
   type AlignmentStatus,
   type GuidanceSelectionStatus,
 } from "./alignment-status";
+
+export {
+  JURISDICTION_TAXONOMY,
+  JURISDICTION_LABELS,
+  normalizeJurisdictionList,
+  isJurisdictionCode,
+  type JurisdictionCode,
+} from "./jurisdictions";
+
+export {
+  EVIDENCE_MAP_MODES,
+  EVIDENCE_MAP_MODE_LABELS,
+  emptyEvidenceMap,
+  evidenceMapFromLegacy,
+  normalizeEvidenceMap,
+  isEvidenceMapComplete,
+  type EvidenceMap,
+  type EvidenceMapMode,
+} from "./control-points";

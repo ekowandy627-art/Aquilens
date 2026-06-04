@@ -78,7 +78,6 @@ export const demoRoles: DemoRole[] = [
       "standards:read",
       "standards:manage",
       "tenant_scaffold:read",
-      "acknowledgements:read",
     ],
   },
   {
@@ -94,7 +93,6 @@ export const demoRoles: DemoRole[] = [
       "agents:read",
       "agents:edit",
       "tenant_scaffold:read",
-      "acknowledgements:read",
     ],
   },
   {
@@ -114,20 +112,18 @@ export const demoRoles: DemoRole[] = [
       "tenant_scaffold:manage",
       "workflows:read",
       "workflows:complete",
-      "acknowledgements:read",
-      "acknowledgements:manage",
     ],
   },
   {
     id: "role-gis-staff",
     tenantId: "tenant-gis",
     name: "Staff",
-    description: "Read assigned SOPs, follow tutorials, and complete acknowledgements.",
+    description: "Read assigned SOPs and complete My Training assignments.",
     isSystem: true,
     permissions: [
       "processes:read",
       "tenant_scaffold:read",
-      "acknowledgements:complete",
+      "training:complete",
     ],
   },
   {
@@ -142,9 +138,9 @@ export const demoRoles: DemoRole[] = [
     id: "role-hospital-staff",
     tenantId: "tenant-hospital",
     name: "Staff",
-    description: "Read assigned hospital SOPs and complete acknowledgements.",
+    description: "Read assigned hospital SOPs and complete training.",
     isSystem: true,
-    permissions: ["processes:read", "acknowledgements:complete"],
+    permissions: ["processes:read", "training:complete"],
   },
 ];
 

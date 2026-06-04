@@ -7,6 +7,8 @@ import { buildGisRichProcessStore } from "./gis-rich-process.seed";
 import { generateProcessCode } from "./process-code";
 import type { ExecutionSchedule } from "./execution-schedule";
 import { defaultExecutionSchedule } from "./execution-schedule";
+import { syncStepControlFields } from "./control-points";
+import type { EvidenceMap } from "@aquilens/shared";
 
 export type ProcessStepRecord = {
   id: string;
@@ -22,6 +24,8 @@ export type ProcessStepRecord = {
   controls?: string;
   notes?: string;
   evidenceRequired: boolean;
+  isControlPoint: boolean;
+  evidenceMap: EvidenceMap;
 };
 
 export type ProcessPersonRecord = {
@@ -107,6 +111,9 @@ export type ProcessRecord = {
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
+  operatingJurisdictions: string[];
+  outputMarketJurisdictions: string[];
+  jurisdictionsInheritOrg: boolean;
 };
 
 type DemoScaffoldNames = {
@@ -136,6 +143,8 @@ function seedProcess(
       description?: string;
       stepType?: ProcessStepRecord["stepType"];
       evidenceRequired?: boolean;
+      isControlPoint?: boolean;
+      evidenceMap?: EvidenceMap;
     }>;
   },
 ) {
@@ -173,6 +182,9 @@ function seedProcess(
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,
+    operatingJurisdictions: [],
+    outputMarketJurisdictions: [],
+    jurisdictionsInheritOrg: true,
   };
 
   const version: ProcessVersionRecord = {
@@ -185,16 +197,25 @@ function seedProcess(
     createdAt: now,
   };
 
-  const steps: ProcessStepRecord[] = input.steps.map((step, index) => ({
-    id: `${versionId}-step-${index + 1}`,
-    tenantId,
-    processVersionId: versionId,
-    stepNumber: index + 1,
-    title: step.title,
-    description: step.description,
-    stepType: step.stepType ?? "manual",
-    evidenceRequired: step.evidenceRequired ?? false,
-  }));
+  const steps: ProcessStepRecord[] = input.steps.map((step, index) => {
+    const synced = syncStepControlFields({
+      isControlPoint: step.isControlPoint,
+      evidenceRequired: step.evidenceRequired,
+      evidenceMap: step.evidenceMap,
+    });
+    return {
+      id: `${versionId}-step-${index + 1}`,
+      tenantId,
+      processVersionId: versionId,
+      stepNumber: index + 1,
+      title: step.title,
+      description: step.description,
+      stepType: step.stepType ?? "manual",
+      evidenceRequired: synced.evidenceRequired,
+      isControlPoint: synced.isControlPoint,
+      evidenceMap: synced.evidenceMap,
+    };
+  });
 
   return { process, version, steps, people: input.people ?? [] };
 }
@@ -363,6 +384,9 @@ export class ProcessDemoStore {
       createdBy: userId,
       createdAt: now,
       updatedAt: now,
+      operatingJurisdictions: [],
+      outputMarketJurisdictions: [],
+      jurisdictionsInheritOrg: true,
     };
 
     const version: ProcessVersionRecord = {
@@ -407,6 +431,7 @@ export class ProcessDemoStore {
   ) {
     const existing = this.listSteps(versionId);
     const stepNumber = input.stepNumber ?? existing.length + 1;
+    const synced = syncStepControlFields(input);
     const step: ProcessStepRecord = {
       id: randomUUID(),
       tenantId,
@@ -420,7 +445,9 @@ export class ProcessDemoStore {
       outputs: input.outputs,
       controls: input.controls,
       notes: input.notes,
-      evidenceRequired: input.evidenceRequired ?? false,
+      evidenceRequired: synced.evidenceRequired,
+      isControlPoint: synced.isControlPoint,
+      evidenceMap: synced.evidenceMap,
     };
     store.steps.set(step.id, step);
     return step;
@@ -431,7 +458,18 @@ export class ProcessDemoStore {
     if (!step) {
       return null;
     }
-    const updated = { ...step, ...patch };
+    const synced = syncStepControlFields({
+      isControlPoint: patch.isControlPoint ?? step.isControlPoint,
+      evidenceRequired: patch.evidenceRequired ?? step.evidenceRequired,
+      evidenceMap: patch.evidenceMap ?? step.evidenceMap,
+    });
+    const updated = {
+      ...step,
+      ...patch,
+      evidenceRequired: synced.evidenceRequired,
+      isControlPoint: synced.isControlPoint,
+      evidenceMap: synced.evidenceMap,
+    };
     store.steps.set(stepId, updated);
     return updated;
   }
@@ -800,6 +838,8 @@ export type CreateStepInput = {
   controls?: string;
   notes?: string;
   evidenceRequired?: boolean;
+  isControlPoint?: boolean;
+  evidenceMap?: EvidenceMap;
 };
 
 function matchesFilters(process: ProcessRecord, filters: ProcessListFilters) {

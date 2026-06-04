@@ -1,6 +1,6 @@
 import { apiFetch } from "@/lib/api-client";
 
-export type StaffAcknowledgement = {
+export type StaffTrainingItem = {
   id: string;
   processId: string;
   processName: string;
@@ -15,9 +15,21 @@ export type StaffAssignedProcess = {
   status: string;
 };
 
+type ReadinessBreakdown = {
+  score: number;
+  components: {
+    processesCovered: number;
+    trainingCurrent: number;
+    controlPointsEvident: number;
+    standardsGaps: number;
+    openIncidents: number;
+  };
+};
+
 export type DashboardSummary =
   | {
       roleView: "super_admin";
+      readiness: ReadinessBreakdown;
       openWorkflows: number;
       pendingApprovals: number;
       overdueItems: number;
@@ -31,6 +43,7 @@ export type DashboardSummary =
     }
   | {
       roleView: "compliance_officer";
+      readiness: ReadinessBreakdown;
       openIncidents: number;
       processesNeedingReview: number;
       auditPacksGenerated: number;
@@ -50,7 +63,7 @@ export type DashboardSummary =
     }
   | {
       roleView: "staff";
-      pendingAcknowledgements: StaffAcknowledgement[];
+      pendingTraining: StaffTrainingItem[];
       assignedProcesses: StaffAssignedProcess[];
     };
 
@@ -110,7 +123,7 @@ export function slaBadgeClass(status: string) {
   return "bg-teal-50 text-teal-700";
 }
 
-export function acknowledgementStatusBadgeClass(status: string) {
+export function trainingStatusBadgeClass(status: string) {
   if (status === "completed") {
     return "bg-emerald-50 text-emerald-800";
   }
@@ -119,3 +132,6 @@ export function acknowledgementStatusBadgeClass(status: string) {
   }
   return "bg-amber-50 text-amber-800";
 }
+
+/** @deprecated Use trainingStatusBadgeClass */
+export const acknowledgementStatusBadgeClass = trainingStatusBadgeClass;

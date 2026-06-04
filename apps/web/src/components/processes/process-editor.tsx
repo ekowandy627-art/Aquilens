@@ -21,6 +21,11 @@ import {
   type ExecutionSchedule,
 } from "@/lib/execution-schedule";
 import {
+  JURISDICTION_LABELS,
+  JURISDICTION_TAXONOMY,
+  emptyEvidenceMap,
+} from "@aquilens/shared";
+import {
   parseParticipantsText,
   participantsToText,
   type ProcessDetail,
@@ -30,6 +35,7 @@ import { useAuthContext } from "@/lib/use-auth-context";
 type TenantFunction = {
   id: string;
   name: string;
+  ownerId?: string;
   areas: Array<{ id: string; name: string }>;
 };
 
@@ -95,9 +101,15 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
   const [inputs, setInputs] = useState(initial?.inputs ?? "");
   const [outputs, setOutputs] = useState(initial?.outputs ?? "");
   const [exceptions, setExceptions] = useState(initial?.exceptions ?? "");
-  const [acknowledgementRequired, setAcknowledgementRequired] = useState(
-    initial?.acknowledgementRequired ?? false,
+  const [jurisdictionsInheritOrg, setJurisdictionsInheritOrg] = useState(
+    initial?.jurisdictionsInheritOrg !== false,
   );
+  const [operatingJurisdictions, setOperatingJurisdictions] = useState<string[]>(
+    initial?.operatingJurisdictions ?? [],
+  );
+  const [outputMarketJurisdictions, setOutputMarketJurisdictions] = useState<
+    string[]
+  >(initial?.outputMarketJurisdictions ?? []);
   const [steps, setSteps] = useState<DraftStep[]>(
     initial?.steps.map((step) => ({
       id: step.id,
@@ -106,7 +118,9 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
       description: step.description,
       responsibleRole: step.responsibleRole,
       stepType: step.stepType,
+      isControlPoint: step.isControlPoint ?? step.evidenceRequired,
       evidenceRequired: step.evidenceRequired,
+      evidenceMap: step.evidenceMap ?? emptyEvidenceMap(),
       agents: step.agents,
     })) ?? [],
   );
@@ -135,6 +149,21 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
     const fn = functions.find((candidate) => candidate.id === functionId);
     return fn?.areas ?? [];
   }, [functions, functionId]);
+
+  const selectedFunction = useMemo(
+    () => functions.find((candidate) => candidate.id === functionId),
+    [functions, functionId],
+  );
+
+  useEffect(() => {
+    if (mode !== "create" || !functionId) {
+      return;
+    }
+    const creatorId = auth.user?.id ?? "";
+    if (creatorId) {
+      setOwnerUserId(creatorId);
+    }
+  }, [mode, functionId, auth.user?.id]);
 
   const versionId = initial?.currentVersion?.id;
 
@@ -191,7 +220,9 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
               description: step.description,
               responsibleRole: step.responsibleRole,
               stepType: step.stepType,
+              isControlPoint: step.isControlPoint,
               evidenceRequired: step.evidenceRequired,
+              evidenceMap: step.evidenceMap,
               stepNumber: step.stepNumber,
             }),
           },
@@ -208,7 +239,9 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
               description: step.description,
               responsibleRole: step.responsibleRole,
               stepType: step.stepType,
+              isControlPoint: step.isControlPoint,
               evidenceRequired: step.evidenceRequired,
+              evidenceMap: step.evidenceMap,
               stepNumber: step.stepNumber,
             }),
           },
@@ -269,7 +302,13 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
         inputs: inputs.trim() || undefined,
         outputs: outputs.trim() || undefined,
         exceptions: exceptions.trim() || undefined,
-        acknowledgementRequired,
+        jurisdictionsInheritOrg,
+        operatingJurisdictions: jurisdictionsInheritOrg
+          ? []
+          : operatingJurisdictions,
+        outputMarketJurisdictions: jurisdictionsInheritOrg
+          ? []
+          : outputMarketJurisdictions,
       };
 
       if (mode === "create" && redirectAfterCreate) {
@@ -317,7 +356,9 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
     inputs,
     outputs,
     exceptions,
-    acknowledgementRequired,
+    jurisdictionsInheritOrg,
+    operatingJurisdictions,
+    outputMarketJurisdictions,
     mode,
     router,
     syncStepsAndPeople,
@@ -349,6 +390,9 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
     approvalRequired,
     reviewFrequency,
     executionSchedule,
+    jurisdictionsInheritOrg,
+    operatingJurisdictions,
+    outputMarketJurisdictions,
     steps,
     ownerUserId,
     editorUserIds,
@@ -557,6 +601,69 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
                   />
                   Approval required before activation
                 </label>
+                <div className="md:col-span-2 space-y-3 rounded-md border border-border p-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={jurisdictionsInheritOrg}
+                      onChange={(event) =>
+                        setJurisdictionsInheritOrg(event.target.checked)
+                      }
+                      data-testid="jurisdictions-inherit-org"
+                    />
+                    Inherit organisation jurisdictions
+                  </label>
+                  {!jurisdictionsInheritOrg ? (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field label="Operating jurisdictions">
+                        <div className="flex flex-wrap gap-2">
+                          {JURISDICTION_TAXONOMY.map((code) => (
+                            <label
+                              key={`op-${code}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-xs"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={operatingJurisdictions.includes(code)}
+                                onChange={() => {
+                                  setOperatingJurisdictions((current) =>
+                                    current.includes(code)
+                                      ? current.filter((item) => item !== code)
+                                      : [...current, code],
+                                  );
+                                }}
+                              />
+                              {JURISDICTION_LABELS[code]}
+                            </label>
+                          ))}
+                        </div>
+                      </Field>
+                      <Field label="Output market jurisdictions">
+                        <div className="flex flex-wrap gap-2">
+                          {JURISDICTION_TAXONOMY.map((code) => (
+                            <label
+                              key={`out-${code}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1 text-xs"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={outputMarketJurisdictions.includes(code)}
+                                onChange={() => {
+                                  setOutputMarketJurisdictions((current) =>
+                                    current.includes(code)
+                                      ? current.filter((item) => item !== code)
+                                      : [...current, code],
+                                  );
+                                }}
+                              />
+                              {JURISDICTION_LABELS[code]}
+                            </label>
+                          ))}
+                        </div>
+                      </Field>
+                    </div>
+                  ) : null}
+                </div>
                 <Field label="Trigger" className="md:col-span-2">
                   <textarea
                     value={triggerDescription}
@@ -600,17 +707,6 @@ export function ProcessEditor({ mode, processId, initial }: ProcessEditorProps) 
                     className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm"
                   />
                 </Field>
-                <label className="flex items-center gap-2 text-sm md:col-span-2">
-                  <input
-                    type="checkbox"
-                    checked={acknowledgementRequired}
-                    onChange={(event) =>
-                      setAcknowledgementRequired(event.target.checked)
-                    }
-                    data-testid="process-acknowledgement-required"
-                  />
-                  Require acknowledgements when published
-                </label>
               </div>
             ) : null}
 

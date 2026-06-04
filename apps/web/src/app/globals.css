@@ -34,3 +34,82 @@ a,
 input {
   outline-color: var(--brand-teal);
 }
+
+.praise-export-page {
+  --praise-shadow: rgba(25, 35, 30, 0.16);
+}
+
+.praise-fade-up {
+  animation: praise-fade-up 780ms ease-out both;
+}
+
+.praise-fade-up:nth-child(2) {
+  animation-delay: 90ms;
+}
+
+.praise-fade-up:nth-child(3) {
+  animation-delay: 180ms;
+}
+
+.praise-fade-up:nth-child(4) {
+  animation-delay: 270ms;
+}
+
+.praise-float {
+  animation: praise-float 6.5s ease-in-out infinite;
+}
+
+.praise-float-delayed {
+  animation: praise-float 7.5s ease-in-out 900ms infinite;
+}
+
+.praise-float-slow {
+  animation: praise-float 8.5s ease-in-out 400ms infinite;
+}
+
+.praise-marquee {
+  animation: praise-marquee 26s linear infinite;
+}
+
+@keyframes praise-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes praise-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+
+  50% {
+    transform: translateY(-16px) rotate(1deg);
+  }
+}
+
+@keyframes praise-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .praise-fade-up,
+  .praise-float,
+  .praise-float-delayed,
+  .praise-float-slow,
+  .praise-marquee {
+    animation: none;
+  }
+}

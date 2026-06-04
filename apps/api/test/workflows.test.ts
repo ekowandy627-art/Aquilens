@@ -38,7 +38,7 @@ describe("workflows API", () => {
     await app.close();
   });
 
-  it("starts workflow from active process and creates tasks from SOP version", async () => {
+  it("blocks manual workflow start (system triggers only)", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -46,7 +46,7 @@ describe("workflows API", () => {
     const app = moduleRef.createNestApplication();
     await app.init();
 
-    const response = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .post("/api/v1/workflows")
       .set("Authorization", "Bearer demo:user-gis-owner")
       .send({
@@ -54,18 +54,15 @@ describe("workflows API", () => {
         title: "Enrol New Student — Summer 2026",
         context: "Summer intake",
       })
-      .expect(201);
-
-    assert.equal(response.body.success, true);
-    assert.equal(response.body.data.status, "in_progress");
-    assert.equal(response.body.data.tasksTotal, 7);
-    assert.equal(response.body.data.tasks[0]?.status, "in_progress");
-    assert.equal(response.body.data.tasks[1]?.status, "pending");
+      .expect(422)
+      .expect((response) => {
+        assert.equal(response.body.error.code, "MANUAL_START_DISABLED");
+      });
 
     await app.close();
   });
 
-  it("blocks starting workflow from non-active process", async () => {
+  it("manual start remains disabled for non-active processes", async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -82,7 +79,7 @@ describe("workflows API", () => {
       })
       .expect(422)
       .expect((response) => {
-        assert.equal(response.body.error.code, "PROCESS_NOT_ACTIVE");
+        assert.equal(response.body.error.code, "MANUAL_START_DISABLED");
       });
 
     await app.close();

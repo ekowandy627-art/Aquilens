@@ -23,15 +23,15 @@ function buildInitialNotifications() {
   notifications.clear();
 
   seedNotification({
-    id: "notif-staff-ack-assigned",
+    id: "notif-staff-training-assigned",
     tenantId: "tenant-gis",
     userId: "user-gis-staff",
-    type: "acknowledgement_assigned",
-    title: "Acknowledgement assigned: Enrol New Student v3",
-    body: "Read the procedure tutorial and confirm you understand the published version.",
-    entityType: "acknowledgement",
-    entityId: "ack-assignment-seed",
-    entityName: "Enrol New Student",
+    type: "training_assigned",
+    title: "Training assigned: Code of conduct read",
+    body: "Complete your acknowledge-only training assignment in My Training.",
+    entityType: "training_assignment",
+    entityId: "assign-gis-staff-ack",
+    entityName: "Code of conduct read",
     isRead: false,
   });
 

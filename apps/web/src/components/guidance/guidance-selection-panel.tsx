@@ -13,6 +13,8 @@ type PackSelection = {
   selectionStatus: GuidanceSelectionStatus | "";
 };
 
+const RELEVANCE_STATUSES: GuidanceSelectionStatus[] = ["relevant", "not_relevant"];
+
 type GuidanceSelectionPanelProps = {
   recommendations: GuidanceRecommendation[];
   packIdsBySlug: Record<string, string>;
@@ -20,6 +22,8 @@ type GuidanceSelectionPanelProps = {
   onChange?: (selections: PackSelection[]) => void;
   onReadyChange?: (ready: boolean) => void;
   requireDisclaimer?: boolean;
+  /** Onboarding: include/exclude packs only; posture is set when linking to a process. */
+  relevanceOnly?: boolean;
 };
 
 export function GuidanceSelectionPanel({
@@ -29,7 +33,11 @@ export function GuidanceSelectionPanel({
   onChange,
   onReadyChange,
   requireDisclaimer = true,
+  relevanceOnly = false,
 }: GuidanceSelectionPanelProps) {
+  const statusOptions = relevanceOnly
+    ? RELEVANCE_STATUSES
+    : (Object.keys(GUIDANCE_SELECTION_LABELS) as GuidanceSelectionStatus[]);
   const [acknowledged, setAcknowledged] = useState(false);
   const [selections, setSelections] = useState<PackSelection[]>(() =>
     recommendations.map((pack) => ({
@@ -72,11 +80,12 @@ export function GuidanceSelectionPanel({
     <div className="space-y-6" data-testid="guidance-selection-panel">
       <div>
         <h2 className="text-lg font-semibold text-slate-950">
-          Select guidance areas
+          {relevanceOnly ? "Include guidance packs" : "Select guidance areas"}
         </h2>
         <p className="mt-1 text-sm text-text-muted">
-          Choose how your organisation relates to each recommended pack. This
-          records alignment posture — not certification.
+          {relevanceOnly
+            ? "Mark which standards libraries are relevant to your organisation. Alignment posture is recorded when you link packs to a process."
+            : "Choose how your organisation relates to each recommended pack. This records alignment posture — not certification."}
         </p>
       </div>
 
@@ -90,8 +99,7 @@ export function GuidanceSelectionPanel({
             <h3 className="font-medium text-slate-950">{pack.name}</h3>
             <p className="mt-1 text-sm text-text-muted">{pack.summary}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(Object.keys(GUIDANCE_SELECTION_LABELS) as GuidanceSelectionStatus[]).map(
-                (status) => (
+              {statusOptions.map((status) => (
                   <button
                     key={status}
                     type="button"

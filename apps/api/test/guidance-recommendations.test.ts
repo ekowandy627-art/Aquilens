@@ -36,6 +36,7 @@ describe("standards recommendation unit tests", () => {
   it("P14-U-04: selection status enum is stable", () => {
     assert.ok(GUIDANCE_SELECTION_VALUES.includes("align"));
     assert.ok(GUIDANCE_SELECTION_VALUES.includes("deferred"));
-    assert.equal(GUIDANCE_SELECTION_VALUES.length, 5);
+    assert.ok(GUIDANCE_SELECTION_VALUES.includes("relevant"));
+    assert.equal(GUIDANCE_SELECTION_VALUES.length, 6);
   });
 });

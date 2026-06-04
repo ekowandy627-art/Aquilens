@@ -34,6 +34,6 @@ describe("alignment-status", () => {
   });
 
   it("guidance selection labels are defined for Phase 14", () => {
-    assert.equal(Object.keys(GUIDANCE_SELECTION_LABELS).length, 5);
+    assert.equal(Object.keys(GUIDANCE_SELECTION_LABELS).length, 6);
   });
 });

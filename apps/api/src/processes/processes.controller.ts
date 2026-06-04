@@ -56,6 +56,9 @@ type UpdateProcessDto = Partial<CreateProcessDto> & {
   exceptions?: string;
   relatedDocuments?: unknown[];
   acknowledgementRequired?: boolean;
+  operatingJurisdictions?: string[];
+  outputMarketJurisdictions?: string[];
+  jurisdictionsInheritOrg?: boolean;
 };
 
 type PublishProcessDto = {
@@ -76,6 +79,8 @@ type StepDto = {
   controls?: string;
   notes?: string;
   evidenceRequired?: boolean;
+  isControlPoint?: boolean;
+  evidenceMap?: Record<string, unknown>;
 };
 
 type ReorderDto = {

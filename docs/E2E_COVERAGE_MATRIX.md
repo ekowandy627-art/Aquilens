@@ -21,7 +21,7 @@ npm run test:e2e
 |-----------|--------|
 | `e2e/golden-path.spec.ts` | Cross-role MVP journey (GP-01 … GP-12) |
 | `e2e/process-publish.spec.ts` | Phase 13 SOP control & publish (P13-UI-*) |
-| `e2e/acknowledgements.spec.ts` | Phase 15 acknowledgements (P15-UI-*) |
+| `e2e/training.spec.ts` | Training module / My Training (TRN-UI-*) |
 | `e2e/phase12-product-language.spec.ts` | Phase 12 copy / disclaimer (P12-UI-*) |
 
 ## Flow matrix
@@ -45,8 +45,8 @@ npm run test:e2e
 | F15 | My tasks inbox | `/my-tasks` | `workflows.test` | GP-10 | |
 | F16 | Audit trail + CSV export | `/audit` | `audit.test` | GP-11 | Compliance |
 | F17 | Audit pack generate/download | `/audit-packs` | `audit.test`, `audit-pack-legal.test` | GP-12 | Poll until `ready` |
-| F18 | Staff acknowledgements | `/my-acknowledgements` | `acknowledgements.test` | P15-UI-01/02/04, GP-13 | |
-| F19 | Manager acknowledgement progress | Process → Acknowledgements tab | `acknowledgements.test` | P15-UI-05, GP-14 | Owner/compliance |
+| F18 | Staff training (acknowledge-only) | `/my-training` | `spec-sprint-6.test.ts` | TRN-UI-*, GP-13 | Replaces legacy acknowledgements |
+| F19 | Staff dashboard pending training | `/dashboard` | `dashboard.test`, `spec-sprint-6.test.ts` | GP-14 | Staff role |
 | F20 | Guidance / standards onboarding | `/onboarding`, `/settings/standards` | `standards.test`, `guidance-recommendations.test` | P12-UI-* (partial) | |
 | F21 | Dashboard / notifications | `/dashboard`, `/notifications` | `dashboard.test`, `notifications.test` | GP-01 (smoke) | |
 | F22 | Archive SOP | Archive on process detail | `process-lifecycle.test` | — | P13-UI-07 not automated |
@@ -68,13 +68,13 @@ npm run test:e2e
 | GP-10 | Staff | Approve in-progress safeguarding task on seeded workflow |
 | GP-11 | Compliance | Audit trail lists events |
 | GP-12 | Compliance | Generate audit pack and reach ready/download |
-| GP-13 | Staff | Read SOP + confirm acknowledgement |
-| GP-14 | Owner | Acknowledgements tab on enrolment process |
+| GP-13 | Staff | Complete acknowledge-only training on My Training |
+| GP-14 | Staff | Dashboard shows pending training |
 
 ## Gaps (intentional or backlog)
 
 - **Full manual SOP wizard** (F06): five-step create with steps/people — API only.
-- **New version publish invalidates acks** (P15-UI-06): needs isolated seed; API partial.
+- **New version publish training reassignment**: needs isolated seed; API partial.
 - **Workflow task on newly started instance** (F14): UI start does not set assignees; staff cannot act until assigned — use seeded `workflow-gis-enrolment-t2` for task UI.
 - **Archive SOP** (F22), **alignment** (F23), **internal audits** (Phase 17+): no Playwright yet.
 - **Supabase-backed tenant**: matrix assumes GIS demo mode; production paths need separate suite.

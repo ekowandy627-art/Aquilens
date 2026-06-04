@@ -10,6 +10,7 @@ export type FunctionNode = {
   id: string;
   name: string;
   description?: string;
+  ownerId?: string;
   areas: ProcessAreaNode[];
 };
 
@@ -30,6 +31,8 @@ export type TenantProfile = {
   name: string;
   institutionType: InstitutionType;
   country: string;
+  operatingJurisdictions?: string[];
+  outputMarketJurisdictions?: string[];
   onboardingComplete: boolean;
   functions: FunctionNode[];
 };

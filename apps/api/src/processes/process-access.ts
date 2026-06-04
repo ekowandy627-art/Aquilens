@@ -1,4 +1,8 @@
 import type { AuthUser } from "../auth/auth.types";
+import {
+  hasPermissionGrant,
+  resolveGrantScope,
+} from "../auth/permission-scopes";
 import type { ProcessPersonRole } from "./execution-schedule";
 
 export type ProcessPersonAssignment = {
@@ -29,7 +33,21 @@ export function hasGlobalProcessRead(user: AuthUser) {
     return true;
   }
 
+  if (resolveGrantScope(user, "processes", "read") === "global") {
+    return true;
+  }
+
   return false;
+}
+
+export function canReadProcessViaFunctionScope(
+  user: AuthUser,
+  functionId: string,
+) {
+  if (resolveGrantScope(user, "processes", "read") !== "function") {
+    return false;
+  }
+  return user.assignedFunctionIds.includes(functionId);
 }
 
 export function isStaffOnlyReader(user: AuthUser) {
@@ -38,10 +56,11 @@ export function isStaffOnlyReader(user: AuthUser) {
   }
 
   return (
-    user.permissions.includes("processes:read") &&
+    hasPermissionGrant(user, "processes", "read") &&
     !user.permissions.includes("processes:create") &&
     !user.permissions.includes("processes:edit") &&
-    !user.permissions.includes("audit:read")
+    !user.permissions.includes("audit:read") &&
+    !hasPermissionGrant(user, "audit", "read")
   );
 }
 
@@ -49,6 +68,7 @@ export function resolveProcessAccess(
   user: AuthUser,
   people: ProcessPersonAssignment[],
   createdBy?: string,
+  functionId?: string,
 ): ProcessAccess {
   if (user.permissions.includes("*")) {
     return {
@@ -65,7 +85,8 @@ export function resolveProcessAccess(
   const canView =
     hasGlobalProcessRead(user) ||
     Boolean(processRole) ||
-    createdBy === user.id;
+    createdBy === user.id ||
+    (functionId ? canReadProcessViaFunctionScope(user, functionId) : false);
 
   const canEdit =
     user.permissions.includes("processes:edit") &&

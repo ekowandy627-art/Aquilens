@@ -9,8 +9,6 @@ export const NOTIFICATION_TYPES = [
   "attestation_due",
   "attestation_overdue",
   "sop_approved",
-  "acknowledgement.required",
-  "acknowledgement.overdue",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

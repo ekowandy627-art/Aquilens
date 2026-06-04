@@ -1,5 +1,12 @@
 # Lessons Learned
 
+## RBAC scoped grants must not duplicate flat global permission keys
+
+- **Mistake:** Demo users kept `processes:read` in flat `permissions` while also defining `permissionGrants` with `function`/`own` scope — `resolveGrantScope` treated them as global and scope filtering never applied.
+- **Root cause:** Flat permission keys imply global scope when no scoped grants exist; duplicate keys bypass function/own enforcement.
+- **Prevention:** For scoped roles, put capabilities only in `permissionGrants`; use `hasPermissionGrant()` in services (audit, approvals) instead of `permissions.includes()`.
+- **Checks:** `apps/api/test/spec-sprint-1.test.ts`; grep `permissions.includes("processes:`)` alongside scoped demo users.
+
 ## NestJS route handler must not share name with injected service
 
 - **Mistake:** `WorkflowsController` injected `AuditService` as `private readonly audit` and defined a route method `audit()` — the property shadowed the method, causing `callback.apply is not a function` on `GET /workflows/:id/audit`.

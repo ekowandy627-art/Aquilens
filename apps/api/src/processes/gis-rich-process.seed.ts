@@ -1,5 +1,6 @@
 import { seedApproval } from "../approvals/approval-demo.store";
 import { generateProcessCode } from "./process-code";
+import { syncStepControlFields } from "./control-points";
 import { defaultExecutionSchedule } from "./execution-schedule";
 import type {
   ProcessPersonRecord,
@@ -35,6 +36,12 @@ const gisScaffold: DemoScaffoldNames[] = [
     areaName: "Fees & Billing",
   },
 ];
+
+const defaultProcessJurisdictions = {
+  operatingJurisdictions: [] as string[],
+  outputMarketJurisdictions: [] as string[],
+  jurisdictionsInheritOrg: true,
+};
 
 const hrScaffold: DemoScaffoldNames = {
   functionId: "fn-school-hr",
@@ -104,6 +111,7 @@ function seedProcess(
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,
+    ...defaultProcessJurisdictions,
   };
 
   const version: ProcessVersionRecord = {
@@ -116,16 +124,21 @@ function seedProcess(
     createdAt: now,
   };
 
-  const steps: ProcessStepRecord[] = input.steps.map((step, index) => ({
-    id: `${versionId}-step-${index + 1}`,
-    tenantId,
-    processVersionId: versionId,
-    stepNumber: index + 1,
-    title: step.title,
-    description: step.description,
-    stepType: step.stepType ?? "manual",
-    evidenceRequired: step.evidenceRequired ?? false,
-  }));
+  const steps: ProcessStepRecord[] = input.steps.map((step, index) => {
+    const synced = syncStepControlFields(step);
+    return {
+      id: `${versionId}-step-${index + 1}`,
+      tenantId,
+      processVersionId: versionId,
+      stepNumber: index + 1,
+      title: step.title,
+      description: step.description,
+      stepType: step.stepType ?? "manual",
+      evidenceRequired: synced.evidenceRequired,
+      isControlPoint: synced.isControlPoint,
+      evidenceMap: synced.evidenceMap,
+    };
+  });
 
   return { process, version, steps, people: input.people ?? [] };
 }
@@ -160,6 +173,7 @@ function addSteps(
   }>,
 ) {
   for (const [index, input] of stepDefs.entries()) {
+    const synced = syncStepControlFields(input);
     const step: ProcessStepRecord = {
       id: `${versionId}-step-${index + 1}`,
       tenantId,
@@ -168,7 +182,9 @@ function addSteps(
       title: input.title,
       description: input.description,
       stepType: input.stepType ?? "manual",
-      evidenceRequired: input.evidenceRequired ?? false,
+      evidenceRequired: synced.evidenceRequired,
+      isControlPoint: synced.isControlPoint,
+      evidenceMap: synced.evidenceMap,
     };
     steps.set(step.id, step);
   }
@@ -227,6 +243,7 @@ export function buildGisRichProcessStore() {
     createdBy: "user-gis-owner",
     createdAt: "2026-05-10T09:00:00.000Z",
     updatedAt: enrolmentNow,
+    ...defaultProcessJurisdictions,
   };
 
   const attendanceV1: ProcessVersionRecord = {
@@ -290,6 +307,7 @@ export function buildGisRichProcessStore() {
     createdBy: "user-gis-owner",
     createdAt: enrolmentNow,
     updatedAt: enrolmentNow,
+    ...defaultProcessJurisdictions,
   };
 
   const enrolmentV1: ProcessVersionRecord = {

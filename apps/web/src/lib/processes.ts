@@ -1,5 +1,8 @@
+import type { EvidenceMap, EvidenceMapMode } from "@aquilens/shared";
 import type { ExecutionSchedule, ProcessPersonRole } from "@/lib/execution-schedule";
 import type { LinkedAgent } from "@/lib/agents";
+
+export type { EvidenceMap, EvidenceMapMode };
 
 export type ProcessAccess = {
   processRole?: ProcessPersonRole;
@@ -13,6 +16,12 @@ export type ProcessParticipant = {
   userId?: string;
 };
 
+export type LifecycleSpineStage = {
+  id: string;
+  label: string;
+  status: "complete" | "current" | "upcoming";
+};
+
 export type ProcessLifecycle = {
   canSubmit: boolean;
   canPublish: boolean;
@@ -20,6 +29,7 @@ export type ProcessLifecycle = {
   canStartWorkflow: boolean;
   canArchive: boolean;
   reviewOverdue?: boolean;
+  spine?: LifecycleSpineStage[];
 };
 
 export type ProcessListItem = {
@@ -53,7 +63,10 @@ export type ProcessStep = {
   outputs?: string;
   controls?: string;
   notes?: string;
+  isControlPoint: boolean;
   evidenceRequired: boolean;
+  evidenceMap: EvidenceMap;
+  evidenceMapComplete?: boolean;
   agents?: LinkedAgent[];
 };
 
@@ -101,6 +114,9 @@ export type ProcessDetail = ProcessListItem & {
   exceptions?: string;
   relatedDocuments: unknown[];
   acknowledgementRequired: boolean;
+  operatingJurisdictions?: string[];
+  outputMarketJurisdictions?: string[];
+  jurisdictionsInheritOrg?: boolean;
   access: ProcessAccess;
   lifecycle?: ProcessLifecycle;
   currentVersion: ProcessVersionSummary | null;

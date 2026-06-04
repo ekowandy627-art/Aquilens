@@ -15,6 +15,11 @@ import {
   type WorkflowTaskStatus,
 } from "./workflow-execution";
 import { workflowDemoStore } from "./workflow-demo.store";
+import type {
+  WorkflowTriggerContext,
+  WorkflowTriggerType,
+} from "./workflow-engine.types";
+import { createResolutionWorkflow } from "./resolution-workflow";
 
 export { WorkflowExecutionError, EvidenceError };
 
@@ -166,7 +171,172 @@ export class WorkflowsService {
     };
   }
 
+  async startApprovalWorkflow(
+    user: AuthUser,
+    context: WorkflowTriggerContext,
+  ) {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+      const process = processDemoStore.getProcess(
+        user.tenantId,
+        context.processId ?? "",
+      );
+      if (!process || !context.processId) {
+        throw new WorkflowExecutionError("NOT_FOUND", "Process not found.");
+      }
+
+      const approverId =
+        context.approverId ??
+        processDemoStore.resolveApprover(process.currentVersionId);
+      const now = new Date().toISOString();
+      const instance = workflowDemoStore.createInstance({
+        tenantId: user.tenantId,
+        processId: process.id,
+        processVersionId: process.currentVersionId,
+        processName: process.name,
+        processCode: process.processCode,
+        title: `Approve SOP: ${process.name}`,
+        context: `trigger:sop_submitted_for_approval;approval:${context.approvalId ?? ""}`,
+        status: "in_progress",
+        startedBy: user.id,
+        startedAt: now,
+      });
+
+      const tasks = [
+        workflowDemoStore.addTask({
+          tenantId: user.tenantId,
+          workflowInstanceId: instance.id,
+          processStepId: `${process.currentVersionId}-approval-review`,
+          stepNumber: 1,
+          title: "Review and approve SOP publication",
+          stepType: "approval",
+          status: "in_progress",
+          assignedTo: approverId,
+          evidenceRequired: false,
+          startedAt: now,
+        }),
+      ];
+
+      workflowDemoStore.appendAudit({
+        workflowInstanceId: instance.id,
+        eventType: "workflow.triggered",
+        actorId: user.id,
+        actorName: user.email,
+        action: `System started approval workflow for "${process.name}"`,
+        occurredAt: now,
+      });
+
+      return {
+        ...this.toWorkflowDetail(instance, tasks),
+        tasks: tasks.map((task) => this.toTaskRecord(task)),
+        trigger: "sop_submitted_for_approval" as const,
+      };
+    }
+
+    throw new WorkflowExecutionError(
+      "NOT_IMPLEMENTED",
+      "Approval workflow trigger requires demo mode in this sprint.",
+    );
+  }
+
+  async startResolutionWorkflow(
+    user: AuthUser,
+    trigger: Extract<WorkflowTriggerType, "incident_logged" | "siai_created">,
+    context: WorkflowTriggerContext,
+  ) {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+      const entityRef =
+        trigger === "incident_logged"
+          ? `incident:${context.incidentId}`
+          : `siai:${context.siaiId}`;
+      const title =
+        trigger === "incident_logged"
+          ? `Resolve incident: ${context.processName ?? context.incidentId}`
+          : `Resolve SIAI: ${context.processName ?? context.siaiId}`;
+
+      const { instance, tasks } = createResolutionWorkflow(user, {
+        title,
+        trigger,
+        processId: context.processId,
+        processVersionId: context.processVersionId,
+        processName: context.processName ?? "Resolution",
+        assigneeId: context.assigneeId ?? user.id,
+        signOffAssigneeId: context.signOffAssigneeId ?? "user-gis-head",
+        entityRef,
+      });
+
+      return {
+        ...this.toWorkflowDetail(instance, tasks),
+        tasks: tasks.map((task) => this.toTaskRecord(task)),
+        trigger,
+        raiserId: context.raiserId,
+      };
+    }
+
+    throw new WorkflowExecutionError(
+      "NOT_IMPLEMENTED",
+      "Resolution workflow trigger requires demo mode in this sprint.",
+    );
+  }
+
+  async startAttestationWorkflow(user: AuthUser, context: WorkflowTriggerContext) {
+    const supabase = getSupabaseAdminClient();
+    if (!supabase) {
+      const now = new Date().toISOString();
+      const instance = workflowDemoStore.createInstance({
+        tenantId: user.tenantId,
+        processId: context.agentId ?? "agent-attestation",
+        processVersionId: "agent-attestation-v1",
+        processName: context.agentName ?? "Agent attestation",
+        title: `Attest agent: ${context.agentName ?? context.agentId}`,
+        context: `trigger:agent_attestation_due;agent:${context.agentId}`,
+        status: "in_progress",
+        startedBy: user.id,
+        startedAt: now,
+      });
+
+      const task = workflowDemoStore.addTask({
+        tenantId: user.tenantId,
+        workflowInstanceId: instance.id,
+        processStepId: `${context.agentId}-attestation`,
+        stepNumber: 1,
+        title: "Complete agent attestation review",
+        stepType: "approval",
+        status: "in_progress",
+        assignedTo: context.assigneeId ?? user.id,
+        evidenceRequired: false,
+        startedAt: now,
+      });
+
+      workflowDemoStore.appendAudit({
+        workflowInstanceId: instance.id,
+        eventType: "workflow.triggered",
+        actorId: user.id,
+        actorName: user.email,
+        action: `Attestation due workflow for ${context.agentName ?? context.agentId}`,
+        occurredAt: now,
+      });
+
+      return {
+        ...this.toWorkflowDetail(instance, [task]),
+        tasks: [this.toTaskRecord(task)],
+        trigger: "agent_attestation_due" as const,
+      };
+    }
+
+    throw new WorkflowExecutionError(
+      "NOT_IMPLEMENTED",
+      "Attestation workflow trigger requires demo mode.",
+    );
+  }
+
   async start(user: AuthUser, input: StartWorkflowInput) {
+    throw new WorkflowExecutionError(
+      "MANUAL_START_DISABLED",
+      "Manual workflow start is disabled. Workflows are created by system triggers (e.g. SOP submitted for approval).",
+    );
+
     const supabase = getSupabaseAdminClient();
     if (!supabase) {
       const process = processDemoStore.getProcess(user.tenantId, input.processId);

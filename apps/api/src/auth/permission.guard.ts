@@ -10,6 +10,7 @@ import {
   type RequiredPermission,
 } from "./require-permission.decorator";
 import type { AuthUser } from "./auth.types";
+import { assertScopedPermission } from "./permission-scopes";
 
 @Injectable()
 export class PermissionGuard implements CanActivate {
@@ -25,11 +26,35 @@ export class PermissionGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<{ user?: AuthUser }>();
-    const permissions = request.user?.permissions ?? [];
-    const permissionKey = `${required.resource}:${required.action}`;
+    const request = context.switchToHttp().getRequest<{
+      user?: AuthUser;
+      params?: Record<string, string>;
+      query?: Record<string, string>;
+      body?: Record<string, unknown>;
+    }>();
 
-    if (permissions.includes("*") || permissions.includes(permissionKey)) {
+    const user = request.user;
+    if (!user) {
+      throw new ForbiddenException({
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Authentication required.",
+          status: 403,
+        },
+      });
+    }
+
+    const scopeContext = {
+      functionId:
+        (request.params?.functionId as string | undefined) ??
+        (request.query?.functionId as string | undefined) ??
+        (request.body?.functionId as string | undefined),
+      createdBy: request.body?.createdBy as string | undefined,
+      resourceOwnerId: request.body?.ownerId as string | undefined,
+    };
+
+    if (assertScopedPermission(user, required, scopeContext)) {
       return true;
     }
 

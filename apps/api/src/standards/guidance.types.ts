@@ -59,6 +59,8 @@ export type TenantGuidanceSelectionRecord = {
 export type OrganisationProfile = {
   organisationType?: string;
   countries?: string[];
+  operatingJurisdictions?: string[];
+  outputMarketJurisdictions?: string[];
   multiSite?: boolean;
   staffBand?: string;
   goals?: string[];

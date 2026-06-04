@@ -37,6 +37,8 @@ export function createTenantProfile(input: {
   name: string;
   institutionType: InstitutionType;
   country: string;
+  operatingJurisdictions?: string[];
+  outputMarketJurisdictions?: string[];
   functions: FunctionNode[];
 }): TenantProfile {
   return {

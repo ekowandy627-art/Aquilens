@@ -70,6 +70,7 @@ export class GuestAccessService {
 
     return {
       id: grant.id,
+      jurisdictionIds: grant.jurisdictionIds ?? [],
       accessUrl,
       token: grant.token,
       scope: grant.scope,
@@ -126,6 +127,7 @@ export class GuestAccessService {
       scope: grant.scope,
       scopeId: grant.scopeId,
       scopeLabel: grant.scopeLabel,
+      jurisdictionIds: grant.jurisdictionIds ?? [],
       auditorEmail: grant.auditorEmail,
       expiresAt: grant.expiresAt,
       status,

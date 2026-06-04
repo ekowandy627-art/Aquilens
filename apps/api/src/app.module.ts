@@ -13,7 +13,10 @@ import { SopModule } from "./sop/sop.module";
 import { TenantsController } from "./tenants/tenants.controller";
 import { DemoController } from "./demo/demo.controller";
 import { StandardsModule } from "./standards/standards.module";
-import { AcknowledgementsModule } from "./acknowledgements/acknowledgements.module";
+import { IncidentsModule } from "./incidents/incidents.module";
+import { SiaiModule } from "./siai/siai.module";
+import { TrainingModule } from "./training/training.module";
+import { RecurringControlsModule } from "./recurring-controls/recurring-controls.module";
 import { InternalModule } from "./internal/internal.module";
 
 @Module({
@@ -22,7 +25,6 @@ import { InternalModule } from "./internal/internal.module";
     AuditModule,
     AdminModule,
     StandardsModule,
-    AcknowledgementsModule,
     ProcessesModule,
     SopModule,
     ApprovalsModule,
@@ -30,6 +32,10 @@ import { InternalModule } from "./internal/internal.module";
     EvidenceModule,
     NotificationsModule,
     AgentsModule,
+    IncidentsModule,
+    SiaiModule,
+    TrainingModule,
+    RecurringControlsModule,
     InternalModule,
   ],
   controllers: [AppController, TenantsController, DemoController],

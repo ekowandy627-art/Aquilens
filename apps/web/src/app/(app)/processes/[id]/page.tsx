@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { ProcessFlowView } from "@/components/processes/process-flow-view";
+import { ProcessLifecycleSpine } from "@/components/processes/process-lifecycle-spine";
 import {
   ProcessStepBuilder,
   type DraftStep,
 } from "@/components/processes/process-step-builder";
+import { emptyEvidenceMap } from "@aquilens/shared";
 import { ProcessDocumentsPanel } from "@/components/processes/process-documents-panel";
 import { PublishProcessDialog } from "@/components/processes/publish-process-dialog";
 import { DetailPageSkeleton } from "@/components/list-table-skeleton";
@@ -26,18 +29,15 @@ import {
   formatReviewFrequency,
 } from "@/lib/execution-schedule";
 import { AuditTrailTable } from "@/components/audit-trail-table";
-import { ProcessAcknowledgementsPanel } from "@/components/acknowledgements/process-acknowledgements-panel";
-import { canReadAcknowledgements } from "@/lib/acknowledgements";
-import { useAuthContext } from "@/lib/use-auth-context";
 
 const allTabs = [
   "Overview",
+  "Flow",
   "Steps",
   "Governance",
   "Control",
   "Documents",
   "People",
-  "Acknowledgements",
   "Version History",
   "Approval History",
   "Audit",
@@ -57,11 +57,7 @@ type ApprovalSummary = {
 
 export default function ProcessDetailPage() {
   const params = useParams<{ id: string }>();
-  const auth = useAuthContext();
-  const permissions = auth.roles.flatMap((role) => role.permissions);
-  const tabs = allTabs.filter(
-    (tab) => tab !== "Acknowledgements" || canReadAcknowledgements(permissions),
-  );
+  const tabs = allTabs;
 
   const [data, setData] = useState<ProcessDetail | null>(null);
   const [versions, setVersions] = useState<ProcessVersionSummary[]>([]);
@@ -145,7 +141,9 @@ export default function ProcessDetailPage() {
       description: step.description,
       responsibleRole: step.responsibleRole,
       stepType: step.stepType,
+      isControlPoint: step.isControlPoint ?? step.evidenceRequired,
       evidenceRequired: step.evidenceRequired,
+      evidenceMap: step.evidenceMap ?? emptyEvidenceMap(),
       agents: step.agents,
     })) ?? [];
 
@@ -229,6 +227,10 @@ export default function ProcessDetailPage() {
             </span>
           </div>
 
+          {data.lifecycle?.spine?.length ? (
+            <ProcessLifecycleSpine stages={data.lifecycle.spine} />
+          ) : null}
+
           <div className="flex flex-wrap gap-2 border-b border-border pb-2">
             {tabs.map((tab) => (
               <button
@@ -298,6 +300,10 @@ export default function ProcessDetailPage() {
               </div>
             ) : null}
 
+            {activeTab === "Flow" ? (
+              <ProcessFlowView steps={data.steps} />
+            ) : null}
+
             {activeTab === "Steps" ? (
               <ProcessStepBuilder
                 steps={stepDrafts}
@@ -326,10 +332,6 @@ export default function ProcessDetailPage() {
                 <DetailField
                   label="Regulatory reference"
                   value={data.regulatoryReference}
-                />
-                <DetailField
-                  label="Acknowledgements required on publish"
-                  value={data.acknowledgementRequired ? "Yes" : "No"}
                 />
               </div>
             ) : null}
@@ -369,10 +371,6 @@ export default function ProcessDetailPage() {
                   ))
                 )}
               </div>
-            ) : null}
-
-            {activeTab === "Acknowledgements" ? (
-              <ProcessAcknowledgementsPanel processId={data.id} />
             ) : null}
 
             {activeTab === "Version History" ? (
@@ -455,24 +453,13 @@ export default function ProcessDetailPage() {
               </span>
             ) : null}
             {lifecycle?.canStartWorkflow ? (
-              <Link href={`/workflows/new?processId=${params.id}`}>
-                <button
-                  type="button"
-                  className="rounded-md border border-border px-3 py-2 text-sm hover:bg-surface-bg"
-                >
-                  Log Compliance Record
-                </button>
-              </Link>
-            ) : (
-              <button
-                type="button"
-                disabled
-                title="Only active SOPs can log compliance records"
-                className="rounded-md border border-border px-3 py-2 text-sm text-text-muted"
+              <span
+                className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-text-muted"
+                title="Compliance records will be triggered automatically in a later sprint"
               >
-                Log Compliance Record
-              </button>
-            )}
+                System-triggered workflows only
+              </span>
+            ) : null}
             {lifecycle?.canArchive ? (
               <button
                 type="button"
@@ -504,7 +491,6 @@ export default function ProcessDetailPage() {
         <PublishProcessDialog
           open={publishOpen}
           processName={data.name}
-          acknowledgementRequired={data.acknowledgementRequired}
           busy={busy}
           onClose={() => setPublishOpen(false)}
           onPublish={(input) =>

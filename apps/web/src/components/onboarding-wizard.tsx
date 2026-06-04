@@ -25,7 +25,12 @@ import {
   saveOrganisationProfile,
   type GuidanceRecommendation,
 } from "@/lib/guidance";
-import type { GuidanceSelectionStatus } from "@aquilens/shared";
+import {
+  JURISDICTION_LABELS,
+  JURISDICTION_TAXONOMY,
+  type GuidanceSelectionStatus,
+  type JurisdictionCode,
+} from "@aquilens/shared";
 
 const steps = ["Institution", "Standards", "Review", "Edit", "Confirm", "Done"];
 
@@ -34,6 +39,12 @@ export function OnboardingWizard() {
   const [step, setStep] = useState(0);
   const [name, setName] = useState("Ghana International School");
   const [country, setCountry] = useState("Ghana");
+  const [operatingJurisdictions, setOperatingJurisdictions] = useState<
+    JurisdictionCode[]
+  >(["ghana"]);
+  const [outputMarketJurisdictions, setOutputMarketJurisdictions] = useState<
+    JurisdictionCode[]
+  >(["ghana", "uk"]);
   const [institutionType, setInstitutionType] =
     useState<InstitutionType>("school");
   const [functions, setFunctions] = useState<FunctionNode[]>(
@@ -84,6 +95,18 @@ export function OnboardingWizard() {
   function changeInstitutionType(nextType: InstitutionType) {
     setInstitutionType(nextType);
     setFunctions(createScaffold(nextType));
+  }
+
+  function toggleJurisdiction(
+    list: JurisdictionCode[],
+    setList: (next: JurisdictionCode[]) => void,
+    code: JurisdictionCode,
+  ) {
+    if (list.includes(code)) {
+      setList(list.filter((item) => item !== code));
+      return;
+    }
+    setList([...list, code]);
   }
 
   function updateFunctionName(functionId: string, nextName: string) {
@@ -178,6 +201,8 @@ export function OnboardingWizard() {
         await saveOrganisationProfile({
           organisationType: institutionType,
           countries: [country],
+          operatingJurisdictions,
+          outputMarketJurisdictions,
         });
         await saveGuidanceSelections(pendingGuidanceSelections);
         setStep(2);
@@ -200,6 +225,8 @@ export function OnboardingWizard() {
       name,
       country,
       institutionType,
+      operatingJurisdictions,
+      outputMarketJurisdictions,
       functions,
     });
 
@@ -298,6 +325,70 @@ export function OnboardingWizard() {
                     className="mt-1 h-10 w-full rounded-md border border-border px-3 text-sm"
                   />
                 </label>
+
+                <fieldset>
+                  <legend className="text-sm font-medium text-slate-700">
+                    Operating jurisdictions
+                  </legend>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Where your organisation operates and is regulated.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {JURISDICTION_TAXONOMY.map((code) => (
+                      <button
+                        key={`op-${code}`}
+                        type="button"
+                        data-testid={`jurisdiction-operating-${code}`}
+                        onClick={() =>
+                          toggleJurisdiction(
+                            operatingJurisdictions,
+                            setOperatingJurisdictions,
+                            code,
+                          )
+                        }
+                        className={`rounded-full px-3 py-1 text-xs ${
+                          operatingJurisdictions.includes(code)
+                            ? "bg-brand-teal text-white"
+                            : "border border-border bg-white text-slate-700"
+                        }`}
+                      >
+                        {JURISDICTION_LABELS[code]}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset>
+                  <legend className="text-sm font-medium text-slate-700">
+                    Output-market jurisdictions
+                  </legend>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Where products or services are sold or delivered.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {JURISDICTION_TAXONOMY.map((code) => (
+                      <button
+                        key={`out-${code}`}
+                        type="button"
+                        data-testid={`jurisdiction-output-${code}`}
+                        onClick={() =>
+                          toggleJurisdiction(
+                            outputMarketJurisdictions,
+                            setOutputMarketJurisdictions,
+                            code,
+                          )
+                        }
+                        className={`rounded-full px-3 py-1 text-xs ${
+                          outputMarketJurisdictions.includes(code)
+                            ? "bg-brand-teal text-white"
+                            : "border border-border bg-white text-slate-700"
+                        }`}
+                      >
+                        {JURISDICTION_LABELS[code]}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
               </div>
             </div>
 
@@ -329,6 +420,7 @@ export function OnboardingWizard() {
 
         {step === 1 && (
           <GuidanceSelectionPanel
+            relevanceOnly
             recommendations={recommendations}
             packIdsBySlug={packIdsBySlug}
             onChange={(rows) => {

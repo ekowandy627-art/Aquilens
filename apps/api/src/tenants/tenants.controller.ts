@@ -7,7 +7,8 @@ import { RequirePermission } from "../auth/require-permission.decorator";
 import { PermissionGuard } from "../auth/permission.guard";
 import type { AuthUser } from "../auth/auth.types";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
-import { demoSchoolScaffold } from "./demo-scaffold";
+import { demoScaffoldForTenant } from "./demo-scaffold";
+import { normalizeJurisdictionList } from "@aquilens/shared";
 
 type InstitutionType =
   | "school"
@@ -27,6 +28,7 @@ type FunctionDto = {
   id?: string;
   name: string;
   description?: string;
+  ownerId?: string;
   areas: ProcessAreaDto[];
 };
 
@@ -34,6 +36,8 @@ type TenantProfileDto = {
   name: string;
   institutionType: InstitutionType;
   country: string;
+  operatingJurisdictions?: string[];
+  outputMarketJurisdictions?: string[];
   onboardingComplete: boolean;
   functions: FunctionDto[];
 };
@@ -44,6 +48,8 @@ type TenantRow = {
   slug: string;
   institution_type: InstitutionType;
   country: string;
+  operating_jurisdictions?: string[] | null;
+  output_market_jurisdictions?: string[] | null;
   settings: Record<string, unknown> | null;
 };
 
@@ -51,6 +57,7 @@ type FunctionRow = {
   id: string;
   name: string;
   description: string | null;
+  owner_id: string | null;
   sort_order: number;
   tenant_process_areas: Array<{
     id: string;
@@ -105,12 +112,21 @@ export class TenantsController {
       onboarding_complete: dto.onboardingComplete,
     };
 
+    const operatingJurisdictions = normalizeJurisdictionList(
+      dto.operatingJurisdictions,
+    );
+    const outputMarketJurisdictions = normalizeJurisdictionList(
+      dto.outputMarketJurisdictions,
+    );
+
     await supabase
       .from("tenants")
       .update({
         name: dto.name,
         institution_type: dto.institutionType,
         country: dto.country,
+        operating_jurisdictions: operatingJurisdictions,
+        output_market_jurisdictions: outputMarketJurisdictions,
         settings,
       })
       .eq("id", user.tenantId);
@@ -132,6 +148,7 @@ export class TenantsController {
         tenant_id: user.tenantId,
         name: fn.name,
         description: fn.description,
+        owner_id: fn.ownerId ?? null,
         sort_order: functionIndex,
       });
 
@@ -175,7 +192,9 @@ export class TenantsController {
     if (supabase) {
       const { data: tenant } = await supabase
         .from("tenants")
-        .select("id, name, slug, institution_type, country, settings")
+        .select(
+          "id, name, slug, institution_type, country, operating_jurisdictions, output_market_jurisdictions, settings",
+        )
         .eq("id", user.tenantId)
         .maybeSingle<TenantRow>();
 
@@ -183,7 +202,7 @@ export class TenantsController {
         const { data: functions } = await supabase
           .from("tenant_functions")
           .select(
-            "id, name, description, sort_order, tenant_process_areas(id, name, description, sort_order)",
+            "id, name, description, owner_id, sort_order, tenant_process_areas(id, name, description, sort_order)",
           )
           .eq("tenant_id", user.tenantId)
           .eq("status", "active")
@@ -196,6 +215,12 @@ export class TenantsController {
           slug: tenant.slug,
           institutionType: tenant.institution_type,
           country: tenant.country,
+          operatingJurisdictions: normalizeJurisdictionList(
+            tenant.operating_jurisdictions ?? undefined,
+          ),
+          outputMarketJurisdictions: normalizeJurisdictionList(
+            tenant.output_market_jurisdictions ?? undefined,
+          ),
           onboardingComplete: Boolean(
             tenant.settings?.onboarding_complete ?? false,
           ),
@@ -205,6 +230,7 @@ export class TenantsController {
               id: fn.id,
               name: fn.name,
               description: fn.description ?? undefined,
+              ownerId: fn.owner_id ?? undefined,
               areas: (fn.tenant_process_areas ?? [])
                 .sort((first, second) => first.sort_order - second.sort_order)
                 .map((area) => ({
@@ -217,14 +243,21 @@ export class TenantsController {
       }
     }
 
+    const isMfg = user.tenantId === "tenant-mfg";
     return {
       id: user.tenantId,
-      name: "Ghana International School",
-      slug: "gis",
-      institutionType: "school" as const,
-      country: "Ghana",
+      name: isMfg ? "Acme Foods Manufacturing" : "Ghana International School",
+      slug: isMfg ? "mfg" : "gis",
+      institutionType: (isMfg ? "corporate" : "school") as InstitutionType,
+      country: isMfg ? "Ghana" : "Ghana",
+      operatingJurisdictions: isMfg
+        ? (["ghana", "eu"] as const)
+        : (["ghana"] as const),
+      outputMarketJurisdictions: isMfg
+        ? (["uk", "eu"] as const)
+        : (["ghana", "uk"] as const),
       onboardingComplete: true,
-      functions: demoSchoolScaffold(),
+      functions: demoScaffoldForTenant(user.tenantId),
     };
   }
 }

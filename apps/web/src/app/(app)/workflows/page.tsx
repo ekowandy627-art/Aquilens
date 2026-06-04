@@ -34,12 +34,7 @@ export default function WorkflowsPage() {
     <>
       <PageHeader
         title="Compliance Records"
-        description="Optional audit and compliance logs with step evidence — started by owners or compliance, not staff daily work."
-        action={
-          <Link href="/workflows/new">
-            <PrimaryButton>Log Compliance Record</PrimaryButton>
-          </Link>
-        }
+        description="Resolution and approval workflows are started automatically (e.g. when an SOP is submitted for approval). Manual start is disabled."
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
@@ -69,9 +64,7 @@ export default function WorkflowsPage() {
         <EmptyState
           icon={ListChecks}
           title="No compliance records yet"
-          description="Compliance records appear when a process owner logs an audit sample or spot check from an active SOP."
-          actionLabel="Log compliance record"
-          actionHref="/workflows/new"
+          description="Approval workflows appear when a process is submitted for review. Additional system triggers will add more records in later sprints."
         />
       ) : (
         <div className="overflow-hidden rounded-lg border border-border bg-white">

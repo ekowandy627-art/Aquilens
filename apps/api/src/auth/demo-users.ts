@@ -1,14 +1,27 @@
 import type { AuthUser } from "./auth.types";
 
+function withDefaults(user: Omit<AuthUser, "permissionGrants" | "assignedFunctionIds"> & {
+  permissionGrants?: AuthUser["permissionGrants"];
+  assignedFunctionIds?: string[];
+}): AuthUser {
+  return {
+    permissionGrants: [],
+    assignedFunctionIds: [],
+    ...user,
+    permissionGrants: user.permissionGrants ?? [],
+    assignedFunctionIds: user.assignedFunctionIds ?? [],
+  };
+}
+
 const demoUsers: Record<string, AuthUser> = {
-  "user-gis-admin": {
+  "user-gis-admin": withDefaults({
     id: "user-gis-admin",
     tenantId: "tenant-gis",
     email: "gis-admin@aquilens.test",
     roles: ["Super Admin"],
     permissions: ["*"],
-  },
-  "user-gis-compliance": {
+  }),
+  "user-gis-compliance": withDefaults({
     id: "user-gis-compliance",
     tenantId: "tenant-gis",
     email: "gis-compliance@aquilens.test",
@@ -16,6 +29,7 @@ const demoUsers: Record<string, AuthUser> = {
     permissions: [
       "processes:read",
       "workflows:read",
+      "workflows:complete",
       "agents:read",
       "agents:create",
       "agents:edit",
@@ -24,25 +38,38 @@ const demoUsers: Record<string, AuthUser> = {
       "standards:read",
       "standards:manage",
       "tenant_scaffold:read",
-      "acknowledgements:read",
+      "incidents:read",
+      "incidents:create",
+      "incidents:edit",
     ],
-  },
-  "user-gis-head": {
+    permissionGrants: [
+      { resource: "processes", action: "read", scope: "global" },
+    ],
+  }),
+  "user-gis-head": withDefaults({
     id: "user-gis-head",
     tenantId: "tenant-gis",
     email: "gis-head@aquilens.test",
     roles: ["Department Head"],
     permissions: [
-      "processes:read",
-      "processes:approve",
       "workflows:read",
+      "workflows:complete",
       "agents:read",
       "agents:edit",
       "tenant_scaffold:read",
-      "acknowledgements:read",
     ],
-  },
-  "user-gis-owner": {
+    permissionGrants: [
+      { resource: "processes", action: "read", scope: "function" },
+      { resource: "processes", action: "approve", scope: "function" },
+    ],
+    assignedFunctionIds: [
+      "fn-school-academics",
+      "fn-school-admissions",
+      "fn-school-hr",
+      "fn-school-finance",
+    ],
+  }),
+  "user-gis-owner": withDefaults({
     id: "user-gis-owner",
     tenantId: "tenant-gis",
     email: "gis-owner@aquilens.test",
@@ -58,38 +85,98 @@ const demoUsers: Record<string, AuthUser> = {
       "tenant_scaffold:manage",
       "workflows:read",
       "workflows:complete",
-      "acknowledgements:read",
-      "acknowledgements:manage",
+      "incidents:read",
+      "incidents:create",
+      "incidents:edit",
     ],
-  },
-  "user-gis-staff": {
+  }),
+  "user-gis-staff": withDefaults({
     id: "user-gis-staff",
     tenantId: "tenant-gis",
     email: "gis-staff@aquilens.test",
     roles: ["Staff"],
     permissions: [
-      "processes:read",
       "tenant_scaffold:read",
-      "acknowledgements:complete",
+      "training:complete",
     ],
-  },
-  "user-hospital-admin": {
+    permissionGrants: [
+      { resource: "processes", action: "read", scope: "own" },
+    ],
+  }),
+  "user-mfg-admin": withDefaults({
+    id: "user-mfg-admin",
+    tenantId: "tenant-mfg",
+    email: "mfg-admin@aquilens.test",
+    roles: ["Super Admin"],
+    permissions: ["*"],
+  }),
+  "user-mfg-owner": withDefaults({
+    id: "user-mfg-owner",
+    tenantId: "tenant-mfg",
+    email: "mfg-owner@aquilens.test",
+    roles: ["Process Owner"],
+    permissions: [
+      "processes:create",
+      "processes:read",
+      "processes:edit",
+      "processes:publish",
+      "standards:read",
+      "standards:manage",
+      "tenant_scaffold:read",
+      "tenant_scaffold:manage",
+      "workflows:read",
+      "workflows:complete",
+    ],
+  }),
+  "user-mfg-compliance": withDefaults({
+    id: "user-mfg-compliance",
+    tenantId: "tenant-mfg",
+    email: "mfg-compliance@aquilens.test",
+    roles: ["Compliance Officer"],
+    permissions: [
+      "processes:read",
+      "workflows:read",
+      "audit:read",
+      "audit_packs:generate",
+      "standards:read",
+      "standards:manage",
+      "tenant_scaffold:read",
+    ],
+  }),
+  "user-mfg-staff": withDefaults({
+    id: "user-mfg-staff",
+    tenantId: "tenant-mfg",
+    email: "mfg-staff@aquilens.test",
+    roles: ["Staff"],
+    permissions: ["processes:read", "tenant_scaffold:read"],
+    permissionGrants: [
+      { resource: "processes", action: "read", scope: "own" },
+    ],
+  }),
+  "user-hospital-admin": withDefaults({
     id: "user-hospital-admin",
     tenantId: "tenant-hospital",
     email: "hospital-admin@aquilens.test",
     roles: ["Super Admin"],
     permissions: ["*"],
-  },
-  "user-hospital-staff": {
+  }),
+  "user-hospital-staff": withDefaults({
     id: "user-hospital-staff",
     tenantId: "tenant-hospital",
     email: "hospital-staff@aquilens.test",
     roles: ["Staff"],
     permissions: [
       "processes:read",
-      "acknowledgements:complete",
+      "training:complete",
     ],
-  },
+  }),
+  "user-gis-guest-auditor": withDefaults({
+    id: "user-gis-guest-auditor",
+    tenantId: "tenant-gis",
+    email: "guest-auditor@aquilens.test",
+    roles: ["Guest Auditor"],
+    permissions: ["audit:read", "audit_packs:read", "processes:read"],
+  }),
 };
 
 export function resolveDemoUser(token: string): AuthUser {
@@ -132,6 +219,26 @@ const demoUserProfiles: Record<
     full_name: "Grace Osei",
     email: "gis-staff@aquilens.test",
     tenantId: "tenant-gis",
+  },
+  "user-mfg-admin": {
+    full_name: "Akosua Mensah",
+    email: "mfg-admin@aquilens.test",
+    tenantId: "tenant-mfg",
+  },
+  "user-mfg-owner": {
+    full_name: "Kwame Boateng",
+    email: "mfg-owner@aquilens.test",
+    tenantId: "tenant-mfg",
+  },
+  "user-mfg-compliance": {
+    full_name: "Efua Asante",
+    email: "mfg-compliance@aquilens.test",
+    tenantId: "tenant-mfg",
+  },
+  "user-mfg-staff": {
+    full_name: "Kofi Osei",
+    email: "mfg-staff@aquilens.test",
+    tenantId: "tenant-mfg",
   },
   "user-hospital-admin": {
     full_name: "Hospital Admin",

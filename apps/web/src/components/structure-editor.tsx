@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
 import { createId, type FunctionNode } from "@/lib/scaffolds";
 import {
   loadTenantProfile,
@@ -22,6 +23,9 @@ export function StructureEditor() {
   });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [tenantUsers, setTenantUsers] = useState<
+    Array<{ id: string; full_name: string; email: string }>
+  >([]);
 
   const { profile, selectedFunctionId } = state;
 
@@ -40,6 +44,18 @@ export function StructureEditor() {
       .finally(() => {
         if (active) {
           setLoading(false);
+        }
+      });
+
+    apiFetch<Array<{ id: string; full_name: string; email: string }>>("/users")
+      .then((users) => {
+        if (active) {
+          setTenantUsers(users);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setTenantUsers([]);
         }
       });
 
@@ -207,6 +223,39 @@ export function StructureEditor() {
                       className="mt-1 w-full rounded-md border border-border px-3 py-2 text-sm leading-6"
                     />
                   </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-slate-700">
+                      Function owner
+                    </span>
+                    <select
+                      value={selectedFunction.ownerId ?? ""}
+                      onChange={(event) =>
+                        updateFunctions((functions) =>
+                          functions.map((fn) =>
+                            fn.id === selectedFunction.id
+                              ? {
+                                  ...fn,
+                                  ownerId: event.target.value || undefined,
+                                }
+                              : fn,
+                          ),
+                        )
+                      }
+                      className="mt-1 h-10 w-full rounded-md border border-border bg-white px-3 text-sm"
+                    >
+                      <option value="">No default owner</option>
+                      {tenantUsers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.full_name} ({user.email})
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-text-muted">
+                      New processes under this function start with this person as
+                      process owner. You can change the owner on any individual
+                      process later.
+                    </p>
+                  </label>
                 </div>
                 <Button
                   type="button"
@@ -228,7 +277,9 @@ export function StructureEditor() {
                     Process areas
                   </h2>
                   <p className="mt-1 text-sm text-text-muted">
-                    Processes will be created under these areas in Phase 3.
+                    Sub-categories within this function where SOPs are filed — for
+                    example, under Academics you might have Student Records,
+                    Curriculum, and Assessment.
                   </p>
                 </div>
                 <Button

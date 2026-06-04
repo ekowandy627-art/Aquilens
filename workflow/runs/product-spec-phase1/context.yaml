@@ -1,0 +1,26 @@
+approved: true
+plan_slug: product-spec-phase1
+plan_file: /Users/chalefromghana/.cursor/plans/product_spec_implementation_5576650a.plan.md
+project_folder: /Users/chalefromghana/Projects/Aquilens
+
+test_locations:
+  - apps/api/test/
+  - apps/web/e2e/
+
+source_roots:
+  - apps/api/src/
+  - apps/web/src/
+  - packages/shared/
+  - supabase/migrations/
+
+documentation_locations:
+  - docs/
+  - PRODUCT_REVIEW_AND_SPEC.md
+  - docs/PHASE1_RBAC_MATRIX.md
+  - docs/PHASE1_SCHEMA_DELTAS.md
+  - docs/PHASE1_USER_FLOWS.md
+
+notes: |
+  Product Spec Phase 1 — 10 sprints (spec-sprint-1 … spec-sprint-10).
+  Source of truth: PRODUCT_REVIEW_AND_SPEC.md + product_spec_implementation plan.
+  Autonomous gated execution with code review per sprint.

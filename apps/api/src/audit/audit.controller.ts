@@ -18,6 +18,7 @@ import { CurrentUser } from "../auth/current-user.decorator";
 import { PermissionGuard } from "../auth/permission.guard";
 import { RequirePermission } from "../auth/require-permission.decorator";
 import type { AuthUser } from "../auth/auth.types";
+import { hasPermissionGrant } from "../auth/permission-scopes";
 import { AuditService } from "./audit.service";
 import { AuditPacksService } from "./audit-packs.service";
 import { GuestAccessService } from "./guest-access.service";
@@ -224,7 +225,7 @@ export class AuditController {
     if (
       user.permissions.includes("*") ||
       user.permissions.includes("audit:read") ||
-      user.permissions.includes("processes:read")
+      hasPermissionGrant(user, "processes", "read")
     ) {
       return;
     }

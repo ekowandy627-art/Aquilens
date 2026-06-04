@@ -15,6 +15,7 @@ export type AuditPackJob = {
   completedAt?: string;
   pdfBuffer?: Buffer;
   errorMessage?: string;
+  jurisdictionIds?: string[];
 };
 
 function buildInitialJobs(): AuditPackJob[] {
@@ -32,6 +33,7 @@ function buildInitialJobs(): AuditPackJob[] {
       createdByName: "James Asante",
       createdAt: "2026-04-28T14:55:00.000Z",
       completedAt: "2026-04-28T15:00:00.000Z",
+      jurisdictionIds: ["jurisdiction-ghana"],
     },
     {
       id: "pack-admn-enr-001",

@@ -12,6 +12,7 @@ export type GuestAccessRecord = {
   status: "active" | "revoked" | "expired";
   createdBy: string;
   createdAt: string;
+  jurisdictionIds?: string[];
 };
 
 function buildInitialGuestAccess(): GuestAccessRecord[] {
@@ -31,6 +32,7 @@ function buildInitialGuestAccess(): GuestAccessRecord[] {
       status: "active",
       createdBy: "user-gis-admin",
       createdAt: "2026-05-20T10:00:00.000Z",
+      jurisdictionIds: ["jurisdiction-ghana", "jurisdiction-uk"],
     },
   ];
 }

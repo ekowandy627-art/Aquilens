@@ -1,14 +1,28 @@
 import { Injectable } from "@nestjs/common";
 import type { AuthUser } from "../auth/auth.types";
 import { approvalDemoStore } from "../approvals/approval-demo.store";
-import { acknowledgementDemoStore } from "../acknowledgements/acknowledgement-demo.store";
 import { processDemoStore } from "../processes/process-demo.store";
 import { isStaffOnlyReader } from "../processes/process-access";
 import { workflowDemoStore } from "../workflows/workflow-demo.store";
 import { taskDemoStore } from "./task-demo.store";
+import { incidentDemoStore } from "../incidents/incident-demo.store";
+import { siaiDemoStore } from "../siai/siai-demo.store";
+import { trainingDemoStore } from "../training/training-demo.store";
+
+type ReadinessBreakdown = {
+  score: number;
+  components: {
+    processesCovered: number;
+    trainingCurrent: number;
+    controlPointsEvident: number;
+    standardsGaps: number;
+    openIncidents: number;
+  };
+};
 
 type AdminDashboard = {
   roleView: "super_admin";
+  readiness: ReadinessBreakdown;
   openWorkflows: number;
   pendingApprovals: number;
   overdueItems: number;
@@ -23,6 +37,7 @@ type AdminDashboard = {
 
 type ComplianceDashboard = {
   roleView: "compliance_officer";
+  readiness: ReadinessBreakdown;
   openIncidents: number;
   processesNeedingReview: number;
   auditPacksGenerated: number;
@@ -45,7 +60,7 @@ type DepartmentHeadDashboard = {
 
 type StaffDashboard = {
   roleView: "staff";
-  pendingAcknowledgements: Array<{
+  pendingTraining: Array<{
     id: string;
     processId: string;
     processName: string;
@@ -115,6 +130,7 @@ export class DashboardService {
 
     return {
       roleView: "super_admin",
+      readiness: this.computeReadiness(user.tenantId),
       openWorkflows,
       pendingApprovals,
       overdueItems,
@@ -146,7 +162,10 @@ export class DashboardService {
     void user;
     return {
       roleView: "compliance_officer",
-      openIncidents: 0,
+      readiness: this.computeReadiness(user.tenantId),
+      openIncidents:
+        incidentDemoStore.list(user.tenantId).length +
+        siaiDemoStore.list(user.tenantId).length,
       processesNeedingReview: processDemoStore
         .listProcesses("tenant-gis", { status: "under_review" })
         .length,
@@ -191,22 +210,19 @@ export class DashboardService {
   }
 
   private staffSummary(user: AuthUser): StaffDashboard {
-    const pendingAcknowledgements = acknowledgementDemoStore
-      .listPendingForUser(user.tenantId, user.id)
+    const pendingTraining = trainingDemoStore
+      .listMyAssignments(user.tenantId, user.id)
+      .filter((assignment) => assignment.status === "pending")
       .map((assignment) => {
-        const campaign = acknowledgementDemoStore.getCampaign(assignment.campaignId);
-        const process = campaign
-          ? processDemoStore.getProcess(user.tenantId, campaign.processId)
-          : null;
+        const module = trainingDemoStore.getModule(user.tenantId, assignment.moduleId);
         return {
           id: assignment.id,
-          processId: campaign?.processId ?? "",
-          processName: process?.name ?? "Procedure",
+          processId: module?.processId ?? "",
+          processName: module?.title ?? "Training",
           status: assignment.status,
-          dueDate: assignment.dueDate ?? campaign?.dueDate,
+          dueDate: assignment.dueDate,
         };
-      })
-      .filter((row) => row.processId);
+      });
 
     const assignedProcesses = processDemoStore
       .listProcesses(user.tenantId)
@@ -228,8 +244,61 @@ export class DashboardService {
 
     return {
       roleView: "staff",
-      pendingAcknowledgements,
+      pendingTraining,
       assignedProcesses,
+    };
+  }
+
+  private computeReadiness(tenantId: string): ReadinessBreakdown {
+    const processes = processDemoStore.listProcesses(tenantId);
+    const active = processes.filter((row) => row.status === "active");
+    const processesScore =
+      processes.length === 0 ? 0 : active.length / processes.length;
+
+    const assignments = trainingDemoStore.listAssignmentsForTenant(tenantId);
+    const trainingScore =
+      assignments.length === 0
+        ? 1
+        : assignments.filter((row) => row.status === "completed").length /
+          assignments.length;
+
+    const controlSteps = active.flatMap((process) =>
+      processDemoStore
+        .listSteps(process.currentVersionId)
+        .filter((step) => step.isControlPoint && step.evidenceMapComplete),
+    );
+    const controlPointsScore =
+      controlSteps.length > 0
+        ? Math.min(1, controlSteps.length / Math.max(active.length, 1))
+        : 0.5;
+
+    const underReview = processes.filter((row) => row.status === "under_review").length;
+    const standardsScore =
+      processes.length === 0 ? 1 : 1 - underReview / processes.length;
+
+    const openCount =
+      incidentDemoStore.list(tenantId).length + siaiDemoStore.list(tenantId).length;
+    const incidentsScore = openCount === 0 ? 1 : Math.max(0, 1 - openCount / 5);
+
+    const components = [
+      processesScore,
+      trainingScore,
+      controlPointsScore,
+      standardsScore,
+      incidentsScore,
+    ];
+    const score =
+      components.reduce((sum, value) => sum + value, 0) / components.length;
+
+    return {
+      score: Math.round(score * 100),
+      components: {
+        processesCovered: Math.round(processesScore * 100),
+        trainingCurrent: Math.round(trainingScore * 100),
+        controlPointsEvident: Math.round(controlPointsScore * 100),
+        standardsGaps: Math.round(standardsScore * 100),
+        openIncidents: Math.round(incidentsScore * 100),
+      },
     };
   }
 }

@@ -4,6 +4,7 @@ import {
   formatExecutionSchedule,
   formatReviewFrequency,
 } from "../src/processes/execution-schedule";
+import { resolveDemoUser } from "../src/auth/demo-users";
 import {
   hasGlobalProcessRead,
   resolveProcessAccess,
@@ -27,13 +28,7 @@ describe("phase 3.5 access and schedules", () => {
   });
 
   it("grants staff viewer access only when assigned", () => {
-    const staff = {
-      id: "user-gis-staff",
-      tenantId: "tenant-gis",
-      email: "gis-staff@aquilens.test",
-      roles: ["Staff"],
-      permissions: ["processes:read", "workflows:complete"],
-    };
+    const staff = resolveDemoUser("demo:user-gis-staff");
 
     assert.equal(hasGlobalProcessRead(staff), false);
 
@@ -50,13 +45,7 @@ describe("phase 3.5 access and schedules", () => {
   });
 
   it("allows compliance to read all processes globally", () => {
-    const compliance = {
-      id: "user-gis-compliance",
-      tenantId: "tenant-gis",
-      email: "gis-compliance@aquilens.test",
-      roles: ["Compliance Officer"],
-      permissions: ["processes:read", "audit:read"],
-    };
+    const compliance = resolveDemoUser("demo:user-gis-compliance");
 
     assert.equal(hasGlobalProcessRead(compliance), true);
   });

@@ -5,16 +5,15 @@ import { beforeEach, describe, it } from "node:test";
 import { AppModule } from "../src/app.module";
 import { resetEscalationDemoStore } from "../src/notifications/escalation-demo.store";
 import { resetNotificationDemoStore } from "../src/notifications/notification-demo.store";
-import { resetAcknowledgementDemoStore, seedGisEnrolmentAcknowledgementDemo } from "../src/acknowledgements/acknowledgement-demo.store";
 import { resetProcessDemoStore } from "../src/processes/process-demo.store";
+import { resetTrainingDemoStore } from "../src/training/training-demo.store";
 
 describe("dashboard API", () => {
   beforeEach(() => {
     resetProcessDemoStore();
     resetNotificationDemoStore();
     resetEscalationDemoStore();
-    resetAcknowledgementDemoStore();
-    seedGisEnrolmentAcknowledgementDemo();
+    resetTrainingDemoStore();
   });
 
   it("returns super admin summary for gis-admin", async () => {
@@ -54,7 +53,7 @@ describe("dashboard API", () => {
       .expect(200)
       .expect((response) => {
         assert.equal(response.body.data.roleView, "staff");
-        assert.ok(Array.isArray(response.body.data.pendingAcknowledgements));
+        assert.ok(Array.isArray(response.body.data.pendingTraining));
         assert.ok(Array.isArray(response.body.data.assignedProcesses));
         assert.ok(response.body.data.assignedProcesses.length >= 1);
       });

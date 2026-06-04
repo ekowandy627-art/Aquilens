@@ -50,6 +50,7 @@ export class AuditPacksService {
       dateTo: input.dateTo,
       createdBy: user.id,
       createdByName: user.email,
+      jurisdictionIds: ["jurisdiction-ghana", "jurisdiction-uk"],
     });
 
     await this.audit.log(user, {

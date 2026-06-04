@@ -6,29 +6,23 @@ import { PrimaryButton } from "@/components/primary-button";
 type PublishProcessDialogProps = {
   open: boolean;
   processName: string;
-  acknowledgementRequired: boolean;
   busy?: boolean;
   onClose: () => void;
   onPublish: (input: {
     effectiveDate: string;
     reviewDueDate?: string;
-    acknowledgementRequired: boolean;
-    acknowledgementDueDate?: string;
   }) => void;
 };
 
 export function PublishProcessDialog({
   open,
   processName,
-  acknowledgementRequired: initialAck,
   busy = false,
   onClose,
   onPublish,
 }: PublishProcessDialogProps) {
   const [effectiveDate, setEffectiveDate] = useState("");
   const [reviewDueDate, setReviewDueDate] = useState("");
-  const [acknowledgementRequired, setAcknowledgementRequired] = useState(initialAck);
-  const [acknowledgementDueDate, setAcknowledgementDueDate] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
 
   if (!open) {
@@ -44,11 +38,6 @@ export function PublishProcessDialog({
     onPublish({
       effectiveDate: effectiveDate.trim(),
       reviewDueDate: reviewDueDate.trim() || undefined,
-      acknowledgementRequired,
-      acknowledgementDueDate:
-        acknowledgementRequired && acknowledgementDueDate.trim()
-          ? acknowledgementDueDate.trim()
-          : undefined,
     });
   }
 
@@ -90,33 +79,6 @@ export function PublishProcessDialog({
               data-testid="publish-review-due-date"
             />
           </label>
-
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={acknowledgementRequired}
-              onChange={(event) => setAcknowledgementRequired(event.target.checked)}
-              data-testid="publish-acknowledgement-required"
-            />
-            <span>
-              Require staff acknowledgements when this SOP goes live.
-            </span>
-          </label>
-
-          {acknowledgementRequired ? (
-            <label className="grid gap-1 text-sm">
-              <span className="font-medium text-slate-800">
-                Acknowledgement due date (optional)
-              </span>
-              <input
-                type="date"
-                value={acknowledgementDueDate}
-                onChange={(event) => setAcknowledgementDueDate(event.target.value)}
-                className="h-10 rounded-md border border-border px-3"
-                data-testid="publish-acknowledgement-due-date"
-              />
-            </label>
-          ) : null}
 
           {validationError ? (
             <p className="text-sm text-red-600" data-testid="publish-validation-error">

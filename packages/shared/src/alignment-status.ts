@@ -29,6 +29,7 @@ export const ALIGNMENT_STATUS_LABELS: Record<AlignmentStatus, string> = {
 
 /** Tenant guidance pack selection posture (Phase 14). */
 export const GUIDANCE_SELECTION_VALUES = [
+  "relevant",
   "certified",
   "working_towards",
   "align",
@@ -40,6 +41,7 @@ export type GuidanceSelectionStatus = (typeof GUIDANCE_SELECTION_VALUES)[number]
 
 /** Labels describe tenant posture toward a standard — not Aquilens certification. */
 export const GUIDANCE_SELECTION_LABELS: Record<GuidanceSelectionStatus, string> = {
+  relevant: "Relevant to our organisation",
   certified: "External certification in place",
   working_towards: "Working towards external certification",
   align: "Aligning to guidance",

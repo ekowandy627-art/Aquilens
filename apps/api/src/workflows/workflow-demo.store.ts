@@ -398,6 +398,23 @@ export class WorkflowDemoStore {
     return instance;
   }
 
+  deleteInstance(tenantId: string, id: string) {
+    const instance = this.getInstance(tenantId, id);
+    if (!instance) {
+      return false;
+    }
+    for (const task of this.listTasks(id)) {
+      tasks.delete(task.id);
+    }
+    for (const [key, entry] of auditEvents.entries()) {
+      if (entry.workflowInstanceId === id) {
+        auditEvents.delete(key);
+      }
+    }
+    instances.delete(id);
+    return true;
+  }
+
   createInstance(input: Omit<WorkflowInstanceRecord, "id">) {
     const id = randomUUID();
     instances.set(id, { ...input, id });

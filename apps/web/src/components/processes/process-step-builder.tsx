@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Bot, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { emptyEvidenceMap } from "@aquilens/shared";
+import { ControlPointFields } from "@/components/processes/control-point-fields";
 import type { ProcessStep } from "@/lib/processes";
 import type { LinkedAgent } from "@/lib/agents";
 import { apiFetch } from "@/lib/api-client";
@@ -104,7 +106,9 @@ export function ProcessStepBuilder({
         stepNumber: steps.length + 1,
         title: `Step ${steps.length + 1}`,
         stepType: "manual",
+        isControlPoint: false,
         evidenceRequired: false,
+        evidenceMap: emptyEvidenceMap(),
       },
     ]);
   }
@@ -241,17 +245,12 @@ export function ProcessStepBuilder({
               )}
             </div>
 
-            <label className="flex items-center gap-2 text-sm md:col-span-2">
-              <input
-                type="checkbox"
-                checked={step.evidenceRequired}
-                disabled={readOnly}
-                onChange={(event) =>
-                  updateStep(index, { evidenceRequired: event.target.checked })
-                }
-              />
-              Evidence required
-            </label>
+            <ControlPointFields
+              isControlPoint={step.isControlPoint ?? step.evidenceRequired}
+              evidenceMap={step.evidenceMap ?? emptyEvidenceMap()}
+              readOnly={readOnly}
+              onChange={(patch) => updateStep(index, patch)}
+            />
 
             <div className="md:col-span-2 space-y-2">
               {(step.agents ?? []).map((agent) => (

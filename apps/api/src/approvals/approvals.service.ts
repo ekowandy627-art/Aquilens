@@ -1,6 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../auth/auth.types";
+import {
+  assertScopedPermission,
+  hasPermissionGrant,
+} from "../auth/permission-scopes";
 import { getSupabaseAdminClient } from "../supabase/admin-client";
 import { getSupabaseForUser } from "../demo/demo-data-mode";
 import { approvalDemoStore } from "./approval-demo.store";
@@ -17,11 +21,17 @@ import {
   ProcessAccessError,
   resolveProcessAccess,
 } from "../processes/process-access";
+import { WorkflowEngineService } from "../workflows/workflow-engine.service";
 
 export { ProcessLifecycleError };
 
 @Injectable()
 export class ApprovalsService {
+  constructor(
+    @Inject(WorkflowEngineService)
+    private readonly workflowEngine: WorkflowEngineService,
+  ) {}
+
   async listPending(user: AuthUser) {
     const supabase = getSupabaseForUser(user);
     if (!supabase) {
@@ -77,7 +87,7 @@ export class ApprovalsService {
     if (
       data.approver_id !== user.id &&
       !user.permissions.includes("*") &&
-      !user.permissions.includes("processes:approve")
+      !hasPermissionGrant(user, "processes", "approve")
     ) {
       throw new ProcessAccessError("FORBIDDEN", "Not your approval.");
     }
@@ -142,6 +152,11 @@ export class ApprovalsService {
       if (!result) {
         throw new ProcessLifecycleError("NOT_FOUND", "Process not found.");
       }
+      await this.workflowEngine.trigger(user, "sop_submitted_for_approval", {
+        processId,
+        approvalId: result.approval.id,
+        approverId: result.approval.approverId,
+      });
       return { processId, approvalId: result.approval.id, status: "under_review" };
     }
 
@@ -176,6 +191,16 @@ export class ApprovalsService {
       submitted_at: now,
     });
 
+    try {
+      await this.workflowEngine.trigger(user, "sop_submitted_for_approval", {
+        processId,
+        approvalId,
+        approverId: approverId ?? undefined,
+      });
+    } catch {
+      // Supabase path: engine demo-only in Sprint 4
+    }
+
     return { processId, approvalId, status: "under_review" };
   }
 
@@ -185,7 +210,7 @@ export class ApprovalsService {
     comment?: string,
     approvalId?: string,
   ) {
-    this.assertApprover(user);
+    await this.assertApprover(user, processId);
     const context = await this.loadProcessContext(user, processId);
     assertCanApprove(context.processStatus, context.versionStatus);
 
@@ -256,7 +281,7 @@ export class ApprovalsService {
       );
     }
 
-    this.assertApprover(user);
+    await this.assertApprover(user, processId);
     const context = await this.loadProcessContext(user, processId);
     assertCanReject(context.processStatus, context.versionStatus);
 
@@ -481,14 +506,25 @@ export class ApprovalsService {
     }));
   }
 
-  private assertApprover(user: AuthUser) {
-    if (
-      !user.permissions.includes("*") &&
-      !user.permissions.includes("processes:approve")
-    ) {
+  private async assertApprover(user: AuthUser, processId: string) {
+    if (!hasPermissionGrant(user, "processes", "approve")) {
       throw new ProcessAccessError(
         "FORBIDDEN",
         "You are not allowed to approve processes.",
+      );
+    }
+
+    const context = await this.loadProcessContext(user, processId);
+    if (
+      !assertScopedPermission(
+        user,
+        { resource: "processes", action: "approve", scope: "function" },
+        { functionId: context.functionId },
+      )
+    ) {
+      throw new ProcessAccessError(
+        "FORBIDDEN",
+        "You are not allowed to approve processes in this function.",
       );
     }
   }
@@ -505,18 +541,24 @@ export class ApprovalsService {
         throw new ProcessLifecycleError("NOT_FOUND", "Version not found.");
       }
       const people = processDemoStore.listPeople(process.currentVersionId);
-      const access = resolveProcessAccess(user, people, process.createdBy);
+      const access = resolveProcessAccess(
+        user,
+        people,
+        process.createdBy,
+        process.functionId,
+      );
       return {
         versionId: version.id,
         processStatus: process.status,
         versionStatus: version.status,
+        functionId: process.functionId,
         access,
       };
     }
 
     const { data: process } = await supabase
       .from("processes")
-      .select("id, status, current_version_id, created_by")
+      .select("id, status, current_version_id, created_by, function_id")
       .eq("tenant_id", user.tenantId)
       .eq("id", processId)
       .maybeSingle();
@@ -543,10 +585,12 @@ export class ApprovalsService {
         role: person.role,
       })),
       process.created_by as string | undefined,
+      process.function_id as string,
     );
 
     return {
       versionId: process.current_version_id as string,
+      functionId: process.function_id as string,
       processStatus: process.status as "draft" | "under_review" | "active" | "retired",
       versionStatus: (version?.status ?? "draft") as
         | "draft"

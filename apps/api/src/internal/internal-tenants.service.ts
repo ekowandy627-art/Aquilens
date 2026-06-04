@@ -97,7 +97,7 @@ const ROLE_TEMPLATES = [
   {
     name: "Staff",
     systemKey: "staff",
-    permissions: ["processes:read", "acknowledgements:complete"],
+    permissions: ["processes:read", "training:complete"],
   },
 ];
 

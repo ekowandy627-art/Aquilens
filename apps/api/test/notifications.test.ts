@@ -56,7 +56,7 @@ describe("notifications API", () => {
     await app.init();
 
     await request(app.getHttpServer())
-      .patch("/api/v1/notifications/notif-staff-ack-assigned/read")
+      .patch("/api/v1/notifications/notif-staff-training-assigned/read")
       .set("Authorization", "Bearer demo:user-gis-staff")
       .expect(200)
       .expect((response) => {
@@ -136,6 +136,8 @@ describe("notifications API", () => {
       email: "gis-admin@aquilens.test",
       roles: ["Super Admin"],
       permissions: ["*"],
+      permissionGrants: [],
+      assignedFunctionIds: [],
     });
 
     const rule = rules.find((item) => item.id === "escalation-task-sla");

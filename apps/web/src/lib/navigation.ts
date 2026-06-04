@@ -32,6 +32,16 @@ export const navItems = [
     icon: ListChecks,
   },
   {
+    label: "Incidents",
+    href: "/incidents",
+    icon: ScrollText,
+  },
+  {
+    label: "SIAI",
+    href: "/siai",
+    icon: FileText,
+  },
+  {
     label: "Compliance Records",
     href: "/workflows",
     icon: ListChecks,
@@ -60,8 +70,8 @@ export const staffNavItems = [
     icon: Gauge,
   },
   {
-    label: "My Acknowledgements",
-    href: "/my-acknowledgements",
+    label: "My Training",
+    href: "/my-training",
     icon: BookOpenCheck,
   },
   {

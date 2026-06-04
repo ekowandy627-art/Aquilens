@@ -15,6 +15,8 @@ import {
   type OnboardTenantDto,
 } from "./internal-tenants.service";
 import { InternalGuidanceService } from "./internal-guidance.service";
+import { InternalCronService } from "./internal-cron.service";
+import { resolveDemoUser } from "../auth/demo-users";
 
 @Controller("api/internal")
 @UseGuards(InternalGuard)
@@ -24,7 +26,23 @@ export class InternalController {
     private readonly tenants: InternalTenantsService,
     @Inject(InternalGuidanceService)
     private readonly guidance: InternalGuidanceService,
+    @Inject(InternalCronService)
+    private readonly cron: InternalCronService,
   ) {}
+
+  @Post("cron/attestation-due")
+  async attestationDueCron() {
+    const actor = resolveDemoUser("demo:user-gis-compliance");
+    const data = await this.cron.runAttestationDueCron(actor);
+    return { success: true, data };
+  }
+
+  @Post("cron/readiness-notifications")
+  async readinessCron() {
+    const actor = resolveDemoUser("demo:user-gis-compliance");
+    const data = await this.cron.runReadinessNotifications(actor);
+    return { success: true, data };
+  }
 
   @Get("tenant-lookup")
   async tenantLookup(@Query("slug") slug?: string) {

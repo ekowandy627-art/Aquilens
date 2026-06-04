@@ -1,5 +1,4 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { AcknowledgementsService } from "../acknowledgements/acknowledgements.service";
 import { AgentsService } from "../agents/agents.service";
 import { randomUUID } from "crypto";
 import type { AuthUser } from "../auth/auth.types";
@@ -37,21 +36,28 @@ import {
   type ProcessVersionRecord,
   type UpdateProcessInput,
 } from "./process-demo.store";
+import { demoSchoolScaffold } from "../tenants/demo-scaffold";
+import {
+  buildLifecycleSpine,
+  syncStepControlFields,
+} from "./control-points";
+import {
+  isEvidenceMapComplete,
+  normalizeEvidenceMap,
+  normalizeJurisdictionList,
+} from "@aquilens/shared";
 
 type ScaffoldLookup = {
   functionName: string;
   areaName: string;
+  functionOwnerId?: string;
 };
 
 @Injectable()
 export class ProcessesService {
   private readonly demo = processDemoStore;
 
-  constructor(
-    @Inject(AgentsService) private readonly agentsService: AgentsService,
-    @Inject(AcknowledgementsService)
-    private readonly acknowledgementsService: AcknowledgementsService,
-  ) {}
+  constructor(@Inject(AgentsService) private readonly agentsService: AgentsService) {}
 
   async list(user: AuthUser, filters: ProcessListFilters) {
     const supabase = getSupabaseForUser(user);
@@ -59,7 +65,13 @@ export class ProcessesService {
       return this.demo
         .listProcesses(user.tenantId, filters)
         .filter((process) =>
-          this.canViewProcess(user, process.currentVersionId, process.createdBy),
+          this.canViewProcess(
+            user,
+            process.currentVersionId,
+            process.createdBy,
+            [],
+            process.functionId,
+          ),
         )
         .map((process) => this.toListItem(process));
     }
@@ -97,6 +109,7 @@ export class ProcessesService {
           row.current_version_id as string,
           row.created_by as string | undefined,
           people,
+          row.function_id as string,
         )
       ) {
         visible.push(row);
@@ -138,7 +151,12 @@ export class ProcessesService {
       const version = this.demo.getVersion(process.currentVersionId);
       const steps = this.demo.listSteps(process.currentVersionId);
       const people = this.demo.listPeople(process.currentVersionId);
-      const access = resolveProcessAccess(user, people, process.createdBy);
+      const access = resolveProcessAccess(
+        user,
+        people,
+        process.createdBy,
+        process.functionId,
+      );
       assertProcessView(access);
       const lifecycle = this.buildLifecycle(
         user,
@@ -162,12 +180,29 @@ export class ProcessesService {
           };
         });
 
+      const enrichedSteps = await this.enrichStepsWithAgents(user.tenantId, steps);
+      const jurisdictions = this.resolveProcessJurisdictions(user, process);
+      const controlPointsComplete = enrichedSteps.every(
+        (step) =>
+          !step.isControlPoint || step.evidenceMapComplete !== false,
+      );
+
       return {
         ...this.toDetail(process),
+        ...jurisdictions,
         access: lifecycle.access,
-        lifecycle: lifecycle.flags,
+        lifecycle: {
+          ...lifecycle.flags,
+          spine: buildLifecycleSpine({
+            processStatus: process.status,
+            versionStatus: version?.status ?? "draft",
+            acknowledgementRequired: process.acknowledgementRequired,
+            controlPointsComplete,
+            reviewOverdue: lifecycle.flags.reviewOverdue,
+          }),
+        },
         currentVersion: version ? this.toVersionSummary(version) : null,
-        steps: await this.enrichStepsWithAgents(user.tenantId, steps),
+        steps: enrichedSteps,
         people: people.map((person) => ({
           id: person.id,
           userId: person.userId,
@@ -224,6 +259,7 @@ export class ProcessesService {
       user,
       people,
       process.created_by as string | undefined,
+      process.function_id as string,
     );
     assertProcessView(access);
     const lifecycle = this.buildLifecycle(
@@ -235,6 +271,30 @@ export class ProcessesService {
     lifecycle.flags.reviewOverdue = versionResult.data?.review_due_date
       ? isReviewOverdue(versionResult.data.review_due_date as string)
       : false;
+
+    const mappedSteps = (stepsResult.data ?? []).map((step) => ({
+      id: step.id as string,
+      stepNumber: step.step_number as number,
+      title: step.title as string,
+      description: (step.description as string) ?? undefined,
+      responsibleRole: (step.responsible_role as string) ?? undefined,
+      stepType: step.step_type as string,
+      inputs: (step.inputs as string) ?? undefined,
+      outputs: (step.outputs as string) ?? undefined,
+      controls: (step.controls as string) ?? undefined,
+      notes: (step.notes as string) ?? undefined,
+      isControlPoint: step.is_control_point as boolean,
+      evidenceRequired: step.evidence_required as boolean,
+      evidenceMap: normalizeEvidenceMap(step.evidence_map),
+    }));
+    const enrichedSteps = await this.enrichStepsWithAgents(
+      user.tenantId,
+      mappedSteps,
+    );
+    const controlPointsComplete = enrichedSteps.every(
+      (step) =>
+        !step.isControlPoint || step.evidenceMapComplete !== false,
+    );
 
     return {
       id: process.id,
@@ -272,8 +332,22 @@ export class ProcessesService {
         undefined,
       createdAt: process.created_at,
       updatedAt: process.updated_at,
+      ...this.resolveProcessJurisdictions(user, {
+        operatingJurisdictions: process.operating_jurisdictions as string[],
+        outputMarketJurisdictions: process.output_market_jurisdictions as string[],
+        jurisdictionsInheritOrg: process.jurisdictions_inherit_org as boolean,
+      }),
       access: lifecycle.access,
-      lifecycle: lifecycle.flags,
+      lifecycle: {
+        ...lifecycle.flags,
+        spine: buildLifecycleSpine({
+          processStatus: process.status as string,
+          versionStatus: (versionResult.data?.status ?? "draft") as string,
+          acknowledgementRequired: Boolean(process.acknowledgement_required),
+          controlPointsComplete,
+          reviewOverdue: lifecycle.flags.reviewOverdue,
+        }),
+      },
       currentVersion: versionResult.data
         ? this.toVersionSummary({
             id: versionResult.data.id as string,
@@ -290,22 +364,7 @@ export class ProcessesService {
             archivedAt: (versionResult.data.archived_at as string) ?? undefined,
           })
         : null,
-      steps: await this.enrichStepsWithAgents(
-        user.tenantId,
-        (stepsResult.data ?? []).map((step) => ({
-          id: step.id as string,
-          stepNumber: step.step_number as number,
-          title: step.title as string,
-          description: (step.description as string) ?? undefined,
-          responsibleRole: (step.responsible_role as string) ?? undefined,
-          stepType: step.step_type as string,
-          inputs: (step.inputs as string) ?? undefined,
-          outputs: (step.outputs as string) ?? undefined,
-          controls: (step.controls as string) ?? undefined,
-          notes: (step.notes as string) ?? undefined,
-          evidenceRequired: step.evidence_required as boolean,
-        })),
-      ),
+      steps: enrichedSteps,
       people,
     };
   }
@@ -329,7 +388,12 @@ export class ProcessesService {
         input,
         scaffold,
       );
-      this.demo.replacePeople(version.id, [{ userId: user.id, role: "owner" }]);
+      this.demo.replacePeople(version.id, [
+        {
+          userId: user.id,
+          role: "owner",
+        },
+      ]);
       return { id: process.id, processCode: process.processCode };
     }
 
@@ -403,7 +467,20 @@ export class ProcessesService {
 
     const supabase = getSupabaseForUser(user);
     if (!supabase) {
-      const updated = this.demo.updateProcess(user.tenantId, processId, patch);
+      const normalized = {
+        ...patch,
+        operatingJurisdictions: patch.operatingJurisdictions
+          ? normalizeJurisdictionList(patch.operatingJurisdictions)
+          : undefined,
+        outputMarketJurisdictions: patch.outputMarketJurisdictions
+          ? normalizeJurisdictionList(patch.outputMarketJurisdictions)
+          : undefined,
+      };
+      const updated = this.demo.updateProcess(
+        user.tenantId,
+        processId,
+        normalized,
+      );
       if (!updated) {
         return null;
       }
@@ -444,6 +521,19 @@ export class ProcessesService {
     if (patch.acknowledgementRequired !== undefined)
       payload.acknowledgement_required = patch.acknowledgementRequired;
     if (patch.status !== undefined) payload.status = patch.status;
+    if (patch.jurisdictionsInheritOrg !== undefined) {
+      payload.jurisdictions_inherit_org = patch.jurisdictionsInheritOrg;
+    }
+    if (patch.operatingJurisdictions !== undefined) {
+      payload.operating_jurisdictions = normalizeJurisdictionList(
+        patch.operatingJurisdictions,
+      );
+    }
+    if (patch.outputMarketJurisdictions !== undefined) {
+      payload.output_market_jurisdictions = normalizeJurisdictionList(
+        patch.outputMarketJurisdictions,
+      );
+    }
 
     const { error } = await supabase
       .from("processes")
@@ -503,16 +593,6 @@ export class ProcessesService {
         return null;
       }
 
-      const publishedProcess = this.demo.getProcess(user.tenantId, processId);
-      if (publishedProcess?.acknowledgementRequired) {
-        await this.acknowledgementsService.createCampaignFromPublish(
-          user,
-          processId,
-          result.version.id,
-          { dueDate: input.acknowledgementDueDate },
-        );
-      }
-
       return {
         processId,
         status: "active",
@@ -549,22 +629,6 @@ export class ProcessesService {
         published_by: user.id,
       })
       .eq("id", process.currentVersionId);
-
-    const { data: publishedProcess } = await supabase
-      .from("processes")
-      .select("acknowledgement_required")
-      .eq("tenant_id", user.tenantId)
-      .eq("id", processId)
-      .maybeSingle();
-
-    if (publishedProcess?.acknowledgement_required) {
-      await this.acknowledgementsService.createCampaignFromPublish(
-        user,
-        processId,
-        process.currentVersionId,
-        { dueDate: input.acknowledgementDueDate },
-      );
-    }
 
     return {
       processId,
@@ -725,6 +789,7 @@ export class ProcessesService {
 
     await this.assertVersionAccess(user, processId, versionId, supabase);
 
+    const synced = syncStepControlFields(input);
     const { data, error } = await supabase
       .from("process_steps")
       .insert({
@@ -739,7 +804,9 @@ export class ProcessesService {
         outputs: input.outputs,
         controls: input.controls,
         notes: input.notes,
-        evidence_required: input.evidenceRequired ?? false,
+        is_control_point: synced.isControlPoint,
+        evidence_required: synced.evidenceRequired,
+        evidence_map: synced.evidenceMap,
       })
       .select("*")
       .single();
@@ -759,7 +826,12 @@ export class ProcessesService {
       outputs: data.outputs ?? undefined,
       controls: data.controls ?? undefined,
       notes: data.notes ?? undefined,
+      isControlPoint: data.is_control_point,
       evidenceRequired: data.evidence_required,
+      evidenceMap: normalizeEvidenceMap(data.evidence_map),
+      evidenceMapComplete: isEvidenceMapComplete(
+        normalizeEvidenceMap(data.evidence_map),
+      ),
     };
   }
 
@@ -785,6 +857,8 @@ export class ProcessesService {
         controls: patch.controls,
         notes: patch.notes,
         evidenceRequired: patch.evidenceRequired,
+        isControlPoint: patch.isControlPoint,
+        evidenceMap: patch.evidenceMap,
         stepNumber: patch.stepNumber,
       });
       if (!updated) {
@@ -806,8 +880,28 @@ export class ProcessesService {
     if (patch.outputs !== undefined) payload.outputs = patch.outputs;
     if (patch.controls !== undefined) payload.controls = patch.controls;
     if (patch.notes !== undefined) payload.notes = patch.notes;
-    if (patch.evidenceRequired !== undefined)
-      payload.evidence_required = patch.evidenceRequired;
+    if (
+      patch.evidenceRequired !== undefined ||
+      patch.isControlPoint !== undefined ||
+      patch.evidenceMap !== undefined
+    ) {
+      const existing = await supabase
+        .from("process_steps")
+        .select("is_control_point, evidence_required, evidence_map")
+        .eq("id", stepId)
+        .maybeSingle();
+      const synced = syncStepControlFields({
+        isControlPoint:
+          patch.isControlPoint ?? (existing.data?.is_control_point as boolean),
+        evidenceRequired:
+          patch.evidenceRequired ??
+          (existing.data?.evidence_required as boolean),
+        evidenceMap: patch.evidenceMap ?? existing.data?.evidence_map,
+      });
+      payload.is_control_point = synced.isControlPoint;
+      payload.evidence_required = synced.evidenceRequired;
+      payload.evidence_map = synced.evidenceMap;
+    }
 
     const { data, error } = await supabase
       .from("process_steps")
@@ -832,7 +926,12 @@ export class ProcessesService {
       outputs: data.outputs ?? undefined,
       controls: data.controls ?? undefined,
       notes: data.notes ?? undefined,
+      isControlPoint: data.is_control_point,
       evidenceRequired: data.evidence_required,
+      evidenceMap: normalizeEvidenceMap(data.evidence_map),
+      evidenceMapComplete: isEvidenceMapComplete(
+        normalizeEvidenceMap(data.evidence_map),
+      ),
     };
   }
 
@@ -978,6 +1077,7 @@ export class ProcessesService {
     versionId: string,
     createdBy?: string,
     people: ProcessPersonAssignment[] = [],
+    functionId?: string,
   ) {
     if (!versionId) {
       return hasGlobalProcessRead(user);
@@ -991,7 +1091,12 @@ export class ProcessesService {
             role: person.role,
           }));
 
-    return resolveProcessAccess(user, resolvedPeople, createdBy).canView;
+    return resolveProcessAccess(
+      user,
+      resolvedPeople,
+      createdBy,
+      functionId,
+    ).canView;
   }
 
   private async requireProcess(user: AuthUser, processId: string) {
@@ -1002,13 +1107,20 @@ export class ProcessesService {
         throw new ProcessAccessError("NOT_FOUND", "Process not found.");
       }
       const people = this.demo.listPeople(process.currentVersionId);
-      assertProcessView(resolveProcessAccess(user, people, process.createdBy));
+      assertProcessView(
+        resolveProcessAccess(
+          user,
+          people,
+          process.createdBy,
+          process.functionId,
+        ),
+      );
       return process;
     }
 
     const { data: process, error } = await supabase
       .from("processes")
-      .select("id, status, created_by, current_version_id")
+      .select("id, status, created_by, current_version_id, function_id")
       .eq("tenant_id", user.tenantId)
       .eq("id", processId)
       .maybeSingle();
@@ -1028,6 +1140,7 @@ export class ProcessesService {
         user,
         people,
         process.created_by as string | undefined,
+        process.function_id as string,
       ),
     );
 
@@ -1068,7 +1181,12 @@ export class ProcessesService {
       const version = this.demo.getVersion(process.currentVersionId);
       const people = this.demo.listPeople(process.currentVersionId);
       return {
-        access: resolveProcessAccess(user, people, process.createdBy),
+        access: resolveProcessAccess(
+          user,
+          people,
+          process.createdBy,
+          process.functionId,
+        ),
         processStatus: process.status,
         versionStatus: version?.status ?? "draft",
       };
@@ -1076,7 +1194,7 @@ export class ProcessesService {
 
     const { data: process } = await supabase
       .from("processes")
-      .select("id, status, created_by, current_version_id")
+      .select("id, status, created_by, current_version_id, function_id")
       .eq("tenant_id", user.tenantId)
       .eq("id", processId)
       .maybeSingle();
@@ -1097,6 +1215,7 @@ export class ProcessesService {
         user,
         people,
         process.created_by as string | undefined,
+        process.function_id as string,
       ),
       processStatus: process.status as "draft" | "under_review" | "active" | "retired",
       versionStatus: (version?.status ?? "draft") as
@@ -1175,7 +1294,7 @@ export class ProcessesService {
     const [{ data: fn }, { data: area }] = await Promise.all([
       supabase
         .from("tenant_functions")
-        .select("name")
+        .select("name, owner_id")
         .eq("tenant_id", user.tenantId)
         .eq("id", functionId)
         .maybeSingle(),
@@ -1190,6 +1309,7 @@ export class ProcessesService {
     return {
       functionName: fn?.name ?? "FUNC",
       areaName: area?.name ?? "AREA",
+      functionOwnerId: (fn?.owner_id as string | null) ?? undefined,
     };
   }
 
@@ -1427,7 +1547,11 @@ export class ProcessesService {
     controls?: string;
     notes?: string;
     evidenceRequired: boolean;
+    isControlPoint?: boolean;
+    evidenceMap?: ReturnType<typeof normalizeEvidenceMap>;
   }) {
+    const evidenceMap = normalizeEvidenceMap(step.evidenceMap ?? {});
+    const isControlPoint = step.isControlPoint ?? step.evidenceRequired;
     return {
       id: step.id,
       stepNumber: step.stepNumber,
@@ -1439,7 +1563,45 @@ export class ProcessesService {
       outputs: step.outputs,
       controls: step.controls,
       notes: step.notes,
+      isControlPoint,
       evidenceRequired: step.evidenceRequired,
+      evidenceMap,
+      evidenceMapComplete: isControlPoint
+        ? isEvidenceMapComplete(evidenceMap)
+        : true,
+    };
+  }
+
+  private resolveProcessJurisdictions(
+    user: AuthUser,
+    process: {
+      operatingJurisdictions?: string[];
+      outputMarketJurisdictions?: string[];
+      jurisdictionsInheritOrg?: boolean;
+    },
+  ) {
+    const inherit = process.jurisdictionsInheritOrg !== false;
+    if (!inherit) {
+      return {
+        operatingJurisdictions: normalizeJurisdictionList(
+          process.operatingJurisdictions,
+        ),
+        outputMarketJurisdictions: normalizeJurisdictionList(
+          process.outputMarketJurisdictions,
+        ),
+        jurisdictionsInheritOrg: false,
+      };
+    }
+
+    const tenantDefaults =
+      user.tenantId === "tenant-mfg"
+        ? { operating: ["ghana", "eu"], output: ["uk", "eu"] }
+        : { operating: ["ghana"], output: ["ghana", "uk"] };
+
+    return {
+      operatingJurisdictions: tenantDefaults.operating,
+      outputMarketJurisdictions: tenantDefaults.output,
+      jurisdictionsInheritOrg: true,
     };
   }
 
@@ -1457,6 +1619,9 @@ export class ProcessesService {
 }
 
 function demoScaffoldNames(functionId: string, areaId: string): ScaffoldLookup {
+  const fn = demoSchoolScaffold().find((item) => item.id === functionId);
+  const area = fn?.areas.find((item) => item.id === areaId);
+
   const lookup: Record<string, ScaffoldLookup> = {
     "fn-school-academics": { functionName: "Academics", areaName: "Student Records" },
     "fn-school-admissions": { functionName: "Admissions", areaName: "Enrolment" },
@@ -1466,14 +1631,30 @@ function demoScaffoldNames(functionId: string, areaId: string): ScaffoldLookup {
   const base = lookup[functionId] ?? { functionName: "FUNC", areaName: "AREA" };
 
   if (areaId.includes("student-records")) {
-    return { functionName: "Academics", areaName: "Student Records" };
+    return {
+      functionName: "Academics",
+      areaName: "Student Records",
+      functionOwnerId: fn?.ownerId,
+    };
   }
   if (areaId.includes("enrolment")) {
-    return { functionName: "Admissions", areaName: "Enrolment" };
+    return {
+      functionName: "Admissions",
+      areaName: "Enrolment",
+      functionOwnerId: fn?.ownerId,
+    };
   }
   if (areaId.includes("fees")) {
-    return { functionName: "Finance", areaName: "Fees & Billing" };
+    return {
+      functionName: "Finance",
+      areaName: "Fees & Billing",
+      functionOwnerId: fn?.ownerId,
+    };
   }
 
-  return base;
+  return {
+    ...base,
+    areaName: area?.name ?? base.areaName,
+    functionOwnerId: fn?.ownerId,
+  };
 }

@@ -102,7 +102,7 @@ export default function ProcessesPage() {
         }
         action={
           allowCreate ? (
-            <Link href="/processes/new">
+            <Link href="/processes/compose">
               <PrimaryButton>New Process</PrimaryButton>
             </Link>
           ) : undefined
@@ -192,7 +192,7 @@ export default function ProcessesPage() {
               title="No processes yet"
               description="Create your first SOP draft to start building your process repository."
               actionLabel={allowCreate ? "Create process" : undefined}
-              actionHref={allowCreate ? "/processes/new" : undefined}
+              actionHref={allowCreate ? "/processes/compose" : undefined}
             />
           ) : (
             <div className="rounded-lg border border-border bg-white">

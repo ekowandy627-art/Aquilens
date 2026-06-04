@@ -18,6 +18,7 @@ type UserProfile = {
 
 type UserRoleRow = {
   role_id: string;
+  function_scope_id: string | null;
 };
 
 type RoleRow = {
@@ -136,12 +137,19 @@ export class AuthGuard implements CanActivate {
 
     const { data: userRoles } = await supabase
       .from("user_roles")
-      .select("role_id")
+      .select("role_id, function_scope_id")
       .eq("user_id", profile.id)
       .eq("tenant_id", profile.tenant_id)
       .returns<UserRoleRow[]>();
 
     const roleIds = (userRoles ?? []).map((role) => role.role_id);
+    const assignedFunctionIds = [
+      ...new Set(
+        (userRoles ?? [])
+          .map((role) => role.function_scope_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
 
     const { data: roles } =
       roleIds.length > 0
@@ -162,6 +170,7 @@ export class AuthGuard implements CanActivate {
         : { data: [] };
 
     const permissions = new Set<string>();
+    const permissionGrants: AuthUser["permissionGrants"] = [];
 
     for (const role of roles ?? []) {
       if (role.name === "Super Admin") {
@@ -171,9 +180,14 @@ export class AuthGuard implements CanActivate {
 
     for (const rolePermission of rolePermissions ?? []) {
       if (rolePermission.permissions) {
-        permissions.add(
-          `${rolePermission.permissions.resource}:${rolePermission.permissions.action}`,
-        );
+        const key = `${rolePermission.permissions.resource}:${rolePermission.permissions.action}`;
+        permissions.add(key);
+        const scope = rolePermission.scope as "global" | "function" | "own";
+        permissionGrants.push({
+          resource: rolePermission.permissions.resource,
+          action: rolePermission.permissions.action,
+          scope,
+        });
       }
     }
 
@@ -183,6 +197,8 @@ export class AuthGuard implements CanActivate {
       email: profile.email,
       roles: (roles ?? []).map((role) => role.name),
       permissions: [...permissions],
+      permissionGrants,
+      assignedFunctionIds,
     };
 
     return true;

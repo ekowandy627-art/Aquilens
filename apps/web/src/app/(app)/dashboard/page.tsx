@@ -100,23 +100,23 @@ function StaffDashboard({ data }: { data: Extract<DashboardSummary, { roleView: 
     <div className="space-y-6">
       <section className="rounded-md border border-border bg-white">
         <div className="border-b border-border px-6 py-5">
-          <h2 className="text-xl font-semibold text-slate-950">Pending acknowledgements</h2>
+          <h2 className="text-xl font-semibold text-slate-950">Pending training</h2>
           <p className="mt-1 text-sm text-text-muted">
-            Read the procedure tutorial and confirm you understand the published version.
+            Complete assigned training modules — acknowledge-only or assessed quizzes.
           </p>
         </div>
 
-        {data.pendingAcknowledgements.length === 0 ? (
+        {data.pendingTraining.length === 0 ? (
           <div className="p-6">
             <EmptyState
               icon={BookOpenCheck}
               title="Nothing pending"
-              description="When a new SOP version requires your acknowledgement, it will appear here."
+              description="When training is assigned to you, it will appear here."
             />
           </div>
         ) : (
           <ul>
-            {data.pendingAcknowledgements.map((item) => (
+            {data.pendingTraining.map((item) => (
               <li
                 key={item.id}
                 className="flex flex-col gap-3 border-b border-border px-6 py-5 last:border-0 md:flex-row md:items-center md:justify-between"
@@ -135,10 +135,8 @@ function StaffDashboard({ data }: { data: Extract<DashboardSummary, { roleView: 
                   >
                     {item.status}
                   </span>
-                  <Link
-                    href={`/processes/${item.processId}/tutorial?acknowledge=${item.id}`}
-                  >
-                    <PrimaryButton>Read &amp; confirm</PrimaryButton>
+                  <Link href="/my-training">
+                    <PrimaryButton>Open My Training</PrimaryButton>
                   </Link>
                 </div>
               </li>
@@ -320,12 +318,12 @@ export default function DashboardPage() {
         title={isStaff ? "My Procedures" : "Operational Control Room"}
         description={
           isStaff
-            ? "Read assigned SOPs, follow tutorials, and confirm acknowledgements when required."
+            ? "Read assigned SOPs and complete training in My Training."
             : "Action-first home for processes, approvals, evidence, and governance work that needs attention."
         }
         action={
           !isStaff ? (
-            <Link href="/processes/new">
+            <Link href="/processes/compose">
               <PrimaryButton>New Process</PrimaryButton>
             </Link>
           ) : undefined

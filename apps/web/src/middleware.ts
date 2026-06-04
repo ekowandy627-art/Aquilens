@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/api/tenant-config"];
+const PUBLIC_PATHS = ["/login", "/api/tenant-config", "/praise-export"];
 const DEMO_SESSION_COOKIE = "aquilens-demo-session";
 
 function isPublicPath(pathname: string) {

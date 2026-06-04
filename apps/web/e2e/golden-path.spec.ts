@@ -115,18 +115,21 @@ test.describe("GIS golden path (UI → API)", () => {
     await expect(page.getByText("Effective 2026-06-15")).toBeVisible();
   });
 
-  test("GP-09: owner starts workflow from active enrolment SOP", async ({ page }) => {
+  test("GP-09: owner sees resolution workflows list (manual start removed)", async ({
+    page,
+  }) => {
     await signInAs(page, "gis-owner@aquilens.test");
     await page.goto("/workflows/new");
     await waitForAppReady(page);
+    await expect(page).toHaveURL(/\/workflows\/?$/);
 
-    await page.locator("select").selectOption("proc-gis-enrolment");
-    await page
-      .getByRole("textbox", { name: "Workflow title" })
-      .fill(`E2E Workflow ${Date.now()}`);
-    await page.getByRole("button", { name: "Log Compliance Record" }).click();
-    await page.waitForURL(/\/workflows\//);
+    await expect(
+      page.getByText("Enrol New Student — Term 2 Audit Sample"),
+    ).toBeVisible();
     await expect(page.getByText(/in progress/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/Manual start is disabled|started automatically/i).first(),
+    ).toBeVisible();
   });
 
   test("GP-10: department head completes in-progress compliance record task", async ({ page }) => {
@@ -162,33 +165,21 @@ test.describe("GIS golden path (UI → API)", () => {
     ).toBeVisible({ timeout: 90_000 });
   });
 
-  test("GP-13: staff reads SOP and confirms acknowledgement", async ({ page }) => {
-    const pending = await page.request.get(`${apiBase}/acknowledgements/my`, {
-      headers: demoAuthHeaders("user-gis-staff"),
-    });
-    expect(pending.ok()).toBeTruthy();
-    const body = await pending.json();
-    const assignmentId = (body.data as Array<{ id: string }>)[0]?.id;
-    expect(assignmentId).toBeTruthy();
-
+  test("GP-13: staff completes acknowledge-only training", async ({ page }) => {
     await signInAs(page, "gis-staff@aquilens.test");
-    await page.goto(`/my-acknowledgements/${assignmentId}`);
-    await page.waitForURL(`**/processes/**/tutorial?acknowledge=${assignmentId}`);
+    await page.goto("/my-training");
     await waitForAppReady(page);
-    await expect(page.getByTestId("process-tutorial")).toBeVisible();
-    await page
-      .getByRole("button", { name: "Confirm acknowledgement" })
-      .click();
-    await page.waitForURL("**/my-acknowledgements");
-    await expect(page.getByText("Nothing pending")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "My Training" }).first()).toBeVisible();
+    await expect(page.getByText("Code of conduct read")).toBeVisible();
+    await page.getByRole("button", { name: "Acknowledge" }).first().click();
+    await expect(page.getByText("completed")).toBeVisible({ timeout: 15_000 });
   });
 
-  test("GP-14: owner sees acknowledgement progress on enrolment", async ({ page }) => {
-    await signInAs(page, "gis-owner@aquilens.test");
-    await page.goto("/processes/proc-gis-enrolment");
+  test("GP-14: staff dashboard shows pending training", async ({ page }) => {
+    await signInAs(page, "gis-staff@aquilens.test");
+    await page.goto("/dashboard");
     await waitForAppReady(page);
-    await page.getByTestId("process-tab-acknowledgements").click();
-    await expect(page.getByText("Grace Osei")).toBeVisible();
-    await expect(page.getByText("100% complete")).toBeVisible();
+    await expect(page.getByText("Pending training")).toBeVisible();
+    await expect(page.getByText("Safeguarding essentials")).toBeVisible();
   });
 });
