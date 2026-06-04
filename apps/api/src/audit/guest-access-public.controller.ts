@@ -1,7 +1,18 @@
 import { Controller, Get, HttpException, Inject, Param } from "@nestjs/common";
+import { withDemoAuthDefaults } from "../auth/demo-users";
 import { AuditService } from "./audit.service";
 import { GuestAccessService } from "./guest-access.service";
 import { processDemoStore } from "../processes/process-demo.store";
+
+function guestAuditUser(tenantId: string, email: string) {
+  return withDemoAuthDefaults({
+    id: "guest",
+    tenantId,
+    email,
+    roles: ["Guest Auditor"],
+    permissions: ["audit:read"],
+  });
+}
 
 @Controller("api/v1/guest-access")
 export class GuestAccessPublicController {
@@ -47,13 +58,7 @@ export class GuestAccessPublicController {
         .filter((process) => process.functionId === grant.scopeId)
         .map((process) => process.id);
       const data = await this.audit.list(
-        {
-          id: "guest",
-          tenantId,
-          email: grant.auditorEmail,
-          roles: ["External Auditor"],
-          permissions: ["audit:read"],
-        },
+        guestAuditUser(tenantId, grant.auditorEmail),
         { limit: 100 },
       );
       return {
@@ -68,13 +73,7 @@ export class GuestAccessPublicController {
     }
 
     const data = await this.audit.list(
-      {
-        id: "guest",
-        tenantId,
-        email: grant.auditorEmail,
-        roles: ["External Auditor"],
-        permissions: ["audit:read"],
-      },
+      guestAuditUser(tenantId, grant.auditorEmail),
       { entityId: grant.scopeId, limit: 100 },
     );
     return { success: true, data };

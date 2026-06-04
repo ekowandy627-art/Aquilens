@@ -26,6 +26,7 @@ export type ProcessStepRecord = {
   evidenceRequired: boolean;
   isControlPoint: boolean;
   evidenceMap: EvidenceMap;
+  evidenceMapComplete: boolean;
 };
 
 export type ProcessPersonRecord = {
@@ -214,6 +215,7 @@ function seedProcess(
       evidenceRequired: synced.evidenceRequired,
       isControlPoint: synced.isControlPoint,
       evidenceMap: synced.evidenceMap,
+      evidenceMapComplete: synced.evidenceMapComplete,
     };
   });
 
@@ -448,6 +450,7 @@ export class ProcessDemoStore {
       evidenceRequired: synced.evidenceRequired,
       isControlPoint: synced.isControlPoint,
       evidenceMap: synced.evidenceMap,
+      evidenceMapComplete: synced.evidenceMapComplete,
     };
     store.steps.set(step.id, step);
     return step;
@@ -469,6 +472,7 @@ export class ProcessDemoStore {
       evidenceRequired: synced.evidenceRequired,
       isControlPoint: synced.isControlPoint,
       evidenceMap: synced.evidenceMap,
+      evidenceMapComplete: synced.evidenceMapComplete,
     };
     store.steps.set(stepId, updated);
     return updated;

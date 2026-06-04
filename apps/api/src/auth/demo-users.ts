@@ -1,12 +1,12 @@
 import type { AuthUser } from "./auth.types";
 
-function withDefaults(user: Omit<AuthUser, "permissionGrants" | "assignedFunctionIds"> & {
-  permissionGrants?: AuthUser["permissionGrants"];
-  assignedFunctionIds?: string[];
-}): AuthUser {
+export function withDemoAuthDefaults(
+  user: Omit<AuthUser, "permissionGrants" | "assignedFunctionIds"> & {
+    permissionGrants?: AuthUser["permissionGrants"];
+    assignedFunctionIds?: string[];
+  },
+): AuthUser {
   return {
-    permissionGrants: [],
-    assignedFunctionIds: [],
     ...user,
     permissionGrants: user.permissionGrants ?? [],
     assignedFunctionIds: user.assignedFunctionIds ?? [],
@@ -14,14 +14,14 @@ function withDefaults(user: Omit<AuthUser, "permissionGrants" | "assignedFunctio
 }
 
 const demoUsers: Record<string, AuthUser> = {
-  "user-gis-admin": withDefaults({
+  "user-gis-admin": withDemoAuthDefaults({
     id: "user-gis-admin",
     tenantId: "tenant-gis",
     email: "gis-admin@aquilens.test",
     roles: ["Super Admin"],
     permissions: ["*"],
   }),
-  "user-gis-compliance": withDefaults({
+  "user-gis-compliance": withDemoAuthDefaults({
     id: "user-gis-compliance",
     tenantId: "tenant-gis",
     email: "gis-compliance@aquilens.test",
@@ -46,7 +46,7 @@ const demoUsers: Record<string, AuthUser> = {
       { resource: "processes", action: "read", scope: "global" },
     ],
   }),
-  "user-gis-head": withDefaults({
+  "user-gis-head": withDemoAuthDefaults({
     id: "user-gis-head",
     tenantId: "tenant-gis",
     email: "gis-head@aquilens.test",
@@ -69,7 +69,7 @@ const demoUsers: Record<string, AuthUser> = {
       "fn-school-finance",
     ],
   }),
-  "user-gis-owner": withDefaults({
+  "user-gis-owner": withDemoAuthDefaults({
     id: "user-gis-owner",
     tenantId: "tenant-gis",
     email: "gis-owner@aquilens.test",
@@ -90,7 +90,7 @@ const demoUsers: Record<string, AuthUser> = {
       "incidents:edit",
     ],
   }),
-  "user-gis-staff": withDefaults({
+  "user-gis-staff": withDemoAuthDefaults({
     id: "user-gis-staff",
     tenantId: "tenant-gis",
     email: "gis-staff@aquilens.test",
@@ -103,14 +103,14 @@ const demoUsers: Record<string, AuthUser> = {
       { resource: "processes", action: "read", scope: "own" },
     ],
   }),
-  "user-mfg-admin": withDefaults({
+  "user-mfg-admin": withDemoAuthDefaults({
     id: "user-mfg-admin",
     tenantId: "tenant-mfg",
     email: "mfg-admin@aquilens.test",
     roles: ["Super Admin"],
     permissions: ["*"],
   }),
-  "user-mfg-owner": withDefaults({
+  "user-mfg-owner": withDemoAuthDefaults({
     id: "user-mfg-owner",
     tenantId: "tenant-mfg",
     email: "mfg-owner@aquilens.test",
@@ -128,7 +128,7 @@ const demoUsers: Record<string, AuthUser> = {
       "workflows:complete",
     ],
   }),
-  "user-mfg-compliance": withDefaults({
+  "user-mfg-compliance": withDemoAuthDefaults({
     id: "user-mfg-compliance",
     tenantId: "tenant-mfg",
     email: "mfg-compliance@aquilens.test",
@@ -143,7 +143,7 @@ const demoUsers: Record<string, AuthUser> = {
       "tenant_scaffold:read",
     ],
   }),
-  "user-mfg-staff": withDefaults({
+  "user-mfg-staff": withDemoAuthDefaults({
     id: "user-mfg-staff",
     tenantId: "tenant-mfg",
     email: "mfg-staff@aquilens.test",
@@ -153,14 +153,14 @@ const demoUsers: Record<string, AuthUser> = {
       { resource: "processes", action: "read", scope: "own" },
     ],
   }),
-  "user-hospital-admin": withDefaults({
+  "user-hospital-admin": withDemoAuthDefaults({
     id: "user-hospital-admin",
     tenantId: "tenant-hospital",
     email: "hospital-admin@aquilens.test",
     roles: ["Super Admin"],
     permissions: ["*"],
   }),
-  "user-hospital-staff": withDefaults({
+  "user-hospital-staff": withDemoAuthDefaults({
     id: "user-hospital-staff",
     tenantId: "tenant-hospital",
     email: "hospital-staff@aquilens.test",
@@ -170,7 +170,7 @@ const demoUsers: Record<string, AuthUser> = {
       "training:complete",
     ],
   }),
-  "user-gis-guest-auditor": withDefaults({
+  "user-gis-guest-auditor": withDemoAuthDefaults({
     id: "user-gis-guest-auditor",
     tenantId: "tenant-gis",
     email: "guest-auditor@aquilens.test",

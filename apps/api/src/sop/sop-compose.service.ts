@@ -261,7 +261,7 @@ export class SopComposeService {
         gaps.push({
           field: `alignment.${pack.slug}.reference`,
           severity: "recommended",
-          message: `Reference ${firstReq.title} from ${pack.name} in the SOP purpose or controls.`,
+          message: `Reference ${firstReq.summary} from ${pack.name} in the SOP purpose or controls.`,
         });
       }
     }

@@ -137,6 +137,7 @@ function seedProcess(
       evidenceRequired: synced.evidenceRequired,
       isControlPoint: synced.isControlPoint,
       evidenceMap: synced.evidenceMap,
+      evidenceMapComplete: synced.evidenceMapComplete,
     };
   });
 
@@ -185,6 +186,7 @@ function addSteps(
       evidenceRequired: synced.evidenceRequired,
       isControlPoint: synced.isControlPoint,
       evidenceMap: synced.evidenceMap,
+      evidenceMapComplete: synced.evidenceMapComplete,
     };
     steps.set(step.id, step);
   }

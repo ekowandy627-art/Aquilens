@@ -15,7 +15,9 @@ export class WorkflowExecutionError extends Error {
       | "FORBIDDEN"
       | "INVALID_TASK_TYPE"
       | "PROCESS_NOT_ACTIVE"
-      | "WORKFLOW_CANCELLED",
+      | "WORKFLOW_CANCELLED"
+      | "NOT_IMPLEMENTED"
+      | "MANUAL_START_DISABLED",
     message: string,
   ) {
     super(message);

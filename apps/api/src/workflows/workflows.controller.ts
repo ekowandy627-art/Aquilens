@@ -62,18 +62,8 @@ export class WorkflowsController {
   @RequirePermission("processes", "edit")
   async start(@CurrentUser() user: AuthUser, @Body() dto: StartWorkflowDto) {
     try {
-      const data = await this.workflows.start(user, dto);
-
-      await this.auditService.log(user, {
-        eventType: "workflow.started",
-        entityType: "WorkflowInstance",
-        entityId: data?.id,
-        entityName: dto.title,
-        action: `Started workflow "${dto.title}"`,
-        metadata: { processId: dto.processId },
-      });
-
-      return { success: true, data };
+      await this.workflows.start(user, dto);
+      return { success: true };
     } catch (error) {
       return this.mapError(error);
     }
