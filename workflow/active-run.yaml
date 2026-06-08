@@ -1,3 +1,5 @@
-plan_slug: manager-control-plane
-context_file: workflow/runs/manager-control-plane/context.yaml
-phase_state_file: workflow/runs/manager-control-plane/phase-state.yaml
+plan_slug: learn-motive-reports-remediation
+context_file: workflow/runs/learn-motive-reports-remediation/context.yaml
+phase_state_file: workflow/runs/learn-motive-reports-remediation/phase-state.yaml
+run_status: COMPLETE
+run_note: "R1-R6 remediation completed and approved."

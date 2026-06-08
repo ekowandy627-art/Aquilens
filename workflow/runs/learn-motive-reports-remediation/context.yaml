@@ -1,0 +1,25 @@
+approved: true
+plan_slug: learn-motive-reports-remediation
+plan_file: /Users/chalefromghana/Projects/learn-motive/REPORTS_MODULE_REMEDIATION_PLAN.md
+project_folder: /Users/chalefromghana/Projects/learn-motive
+
+test_locations:
+  - src/test/academics/
+  - src/test/unit/
+  - vitest.config.ts
+
+source_roots:
+  - src/modules/academics/
+  - src/app/api/academics/
+  - src/app/api/guardian/
+  - src/app/(guardian)/
+  - prisma/
+
+documentation_locations:
+  - REPORTS_MODULE_REMEDIATION_PLAN.md
+  - REPORTS_MODULE_E2E_SWEEP.md
+  - REPORTS_MODULE_DB_TEST_RUN.md
+
+notes: |
+  Autonomous remediation run for Academic Reports Module (R1-R6) executed in single-agent mode.
+  Product defaults applied per user instruction (D1-D5) without additional prompts.
