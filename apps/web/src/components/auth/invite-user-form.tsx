@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MailPlus } from "lucide-react";
+import { CheckCircle2, Copy, KeyRound, MailPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { apiFetch } from "@/lib/api-client";
@@ -23,6 +24,18 @@ export function InviteUserForm() {
   const [roleId, setRoleId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [createdUser, setCreatedUser] = useState<{ id: string; email: string } | null>(
+    null,
+  );
+  const [resetLink, setResetLink] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const canEditUsers = context.roles.some(
+    (role) =>
+      role.permissions.includes("*") || role.permissions.includes("users:edit"),
+  );
 
   useEffect(() => {
     async function loadRoles() {
@@ -56,17 +69,115 @@ export function InviteUserForm() {
     setLoading(true);
 
     try {
-      await apiFetch("/auth/invite", {
+      const data = await apiFetch<{ id: string; email: string }>("/auth/invite", {
         method: "POST",
         body: JSON.stringify({ email, fullName, roleId }),
       });
-      router.push("/settings/users");
+      setCreatedUser(data);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invite failed");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function sendPasswordReset() {
+    if (!createdUser) {
+      return;
+    }
+
+    setResetError(null);
+    setResetLoading(true);
+    setCopied(false);
+
+    try {
+      const data = await apiFetch<{ resetLink?: string; email: string }>(
+        `/users/${createdUser.id}/reset-password`,
+        { method: "POST", body: "{}" },
+      );
+      setResetLink(data.resetLink ?? null);
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Password reset failed");
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
+  async function copyResetLink() {
+    if (!resetLink) {
+      return;
+    }
+
+    await navigator.clipboard.writeText(resetLink);
+    setCopied(true);
+  }
+
+  if (createdUser) {
+    return (
+      <>
+        <PageHeader
+          title="User invited"
+          description="The account is ready. Send a password reset link so they can choose their own password."
+        />
+
+        <div className="max-w-2xl rounded-md border border-emerald-200 bg-emerald-50 p-6">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 size-5 text-emerald-700" aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-emerald-950">{createdUser.email}</p>
+              <p className="mt-1 text-sm text-emerald-900">
+                Profile and role assignment were created successfully.
+              </p>
+            </div>
+          </div>
+
+          {canEditUsers && context.source === "supabase" ? (
+            <div className="mt-5 space-y-3">
+              <Button
+                type="button"
+                disabled={resetLoading}
+                onClick={() => void sendPasswordReset()}
+              >
+                <KeyRound className="size-4" aria-hidden="true" />
+                {resetLoading ? "Generating link…" : "Send password reset link"}
+              </Button>
+
+              {resetLink ? (
+                <div className="rounded-md border border-emerald-200 bg-white p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
+                    Reset link
+                  </p>
+                  <p className="mt-2 break-all text-sm text-slate-700">{resetLink}</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="mt-3"
+                    onClick={() => void copyResetLink()}
+                  >
+                    <Copy className="size-4" aria-hidden="true" />
+                    {copied ? "Copied" : "Copy link"}
+                  </Button>
+                  <p className="mt-2 text-xs text-text-muted">
+                    Share this link with the user if email delivery is not configured.
+                  </p>
+                </div>
+              ) : null}
+
+              {resetError ? <p className="text-sm text-red-600">{resetError}</p> : null}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-emerald-900">
+              Ask a user administrator to send a password reset link from Settings → Users.
+            </p>
+          )}
+
+          <Button asChild variant="secondary" className="mt-6">
+            <Link href="/settings/users">Back to users</Link>
+          </Button>
+        </div>
+      </>
+    );
   }
 
   return (

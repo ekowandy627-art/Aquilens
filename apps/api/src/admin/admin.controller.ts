@@ -122,6 +122,68 @@ export class AdminController {
     return { success: true, data: { id: authUser.user.id, email: dto.email } };
   }
 
+  @Post("users/:id/reset-password")
+  @RequirePermission("users", "edit")
+  async resetPassword(@CurrentUser() user: AuthUser, @Param("id") id: string) {
+    const supabase = getSupabaseAdminClient();
+
+    if (!supabase) {
+      return { success: false, error: { code: "SUPABASE_NOT_CONFIGURED" } };
+    }
+
+    const { data: targetUser, error: lookupError } = await supabase
+      .from("users")
+      .select("id, email, full_name")
+      .eq("id", id)
+      .eq("tenant_id", user.tenantId)
+      .maybeSingle<{ id: string; email: string; full_name: string }>();
+
+    if (lookupError || !targetUser) {
+      return {
+        success: false,
+        error: {
+          code: "USER_NOT_FOUND",
+          message: lookupError?.message ?? "User not found",
+          status: 404,
+        },
+      };
+    }
+
+    const { data: linkData, error: linkError } =
+      await supabase.auth.admin.generateLink({
+        type: "recovery",
+        email: targetUser.email,
+      });
+
+    if (linkError || !linkData?.properties?.action_link) {
+      return {
+        success: false,
+        error: {
+          code: "RESET_FAILED",
+          message: linkError?.message ?? "Failed to generate password reset link",
+          status: 500,
+        },
+      };
+    }
+
+    await this.audit.log(user, {
+      eventType: "auth.password_reset_sent",
+      entityType: "User",
+      entityId: targetUser.id,
+      entityName: targetUser.email,
+      action: `Sent password reset link to ${targetUser.email}`,
+    });
+
+    return {
+      success: true,
+      data: {
+        id: targetUser.id,
+        email: targetUser.email,
+        resetLink: linkData.properties.action_link,
+      },
+    };
+  }
+
   @Patch("users/:id/deactivate")
   @RequirePermission("users", "edit")
   async deactivate(@CurrentUser() user: AuthUser, @Param("id") id: string) {
